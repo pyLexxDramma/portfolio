@@ -4,7 +4,7 @@
 
 ## Навыки
 - Python
-- Django/Flask
+- C#
 - JavaScript
 - HTML/CSS
 - [Другие навыки]
