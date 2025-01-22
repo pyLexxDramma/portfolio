@@ -8,7 +8,8 @@
 - JavaScript
 - HTML/CSS
 - Flask
-- TypeScript 
+- TypeScript
+- React.js
 
 ## Python
 
