@@ -7,7 +7,8 @@
 - C#
 - JavaScript
 - HTML/CSS
-- Flask 
+- Flask
+- TypeScript 
 
 ## Python
 
