@@ -7,7 +7,7 @@
 - C#
 - JavaScript
 - HTML/CSS
-- [Другие навыки]
+- Flask 
 
 ## Проекты Python
 
@@ -16,6 +16,7 @@
 - [Telegram-бот для регистрации автомобилей](https://github.com/pyLexxDramma/car_registration_bot) -  Telegram-бот, предназначенный для упрощения процесса регистрации автомобилей жителей жилого комплекса.
 - [Telegram-бот с редактированием изображений](https://github.com/pyLexxDramma/image_telebot) - Заданное редактирование изображения.
 - [Telegram-бот для опросов](https://github.com/pyLexxDramma/bot_questionnaire) - Telegram-бот для опросов/голосований.
+- [Приложение (SPA) для конвертирования валют](https://github.com/pyLexxDramma/currency_converter) - Одностраничное приложение (SPA) для конвертирования валют.
   
 ## Проекты C#
   
