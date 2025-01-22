@@ -10,6 +10,8 @@
 - Flask
 - TypeScript
 - React.js
+- XML
+- Java
 
 ## Python
 
