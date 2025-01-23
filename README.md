@@ -15,6 +15,7 @@
 - Flask
 - TypeScript
 - React.js
+- Node.js
 - XML
 - Java
 
@@ -37,6 +38,10 @@
 ## Java
 
 - [Приложение для загрузки фото с сайта NASA](https://github.com/pyLexxDramma/nasa_bot) - Приложение для загрузки фото с сайта NASA интегрированное в Telegram.
+
+## JavaScript
+
+- [Разработка интерфейса для сайта Hacker News](https://github.com/pyLexxDramma/hacker_news) - Интерфейс для сайта Hacker News из двух страниц
 
 ## Связаться со мной
 - [Email](lexxdramma@vk.com)
