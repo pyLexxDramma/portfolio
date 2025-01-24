@@ -42,6 +42,7 @@
 ## JavaScript
 
 - [Разработка интерфейса для сайта Hacker News](https://github.com/pyLexxDramma/hacker_news) - Интерфейс для сайта Hacker News из двух страниц
+- [Создание текстовых компонентов](https://github.com/pyLexxDramma/my-text-components) - Создание страницы, отображающей список компонентов с помощью библиотеки React.
 
 ## Связаться со мной
 - [Email](lexxdramma@vk.com)
