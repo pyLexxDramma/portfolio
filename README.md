@@ -43,6 +43,7 @@
 
 - [Разработка интерфейса для сайта Hacker News](https://github.com/pyLexxDramma/hacker_news) - Интерфейс для сайта Hacker News из двух страниц
 - [Создание текстовых компонентов](https://github.com/pyLexxDramma/my-text-components) - Создание страницы, отображающей список компонентов с помощью библиотеки React.
+- [Проект, использующий React Router и Redux Saga](https://github.com/pyLexxDramma/list_and_details) - Проект, использующий React Router и Redux Saga
 
 ## Связаться со мной
 - [Email](lexxdramma@vk.com)
