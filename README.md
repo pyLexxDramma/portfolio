@@ -39,6 +39,7 @@
 
 - [Программа для переворачивания строки](https://github.com/pyLexxDramma/reverse_string) - Программа для переворачивания строки
 - [Программа для переворота последовательности символов](https://github.com/pyLexxDramma/reverse_character_sequence) - Программа для переворота последовательности символов в строке без использования встроенной в String функции reverse().
+- [Программа для перестановки двух значений при помощи третьей переменной](https://github.com/pyLexxDramma/swap_values)
 - [Приложение для загрузки фото с сайта NASA](https://github.com/pyLexxDramma/nasa_bot) - Приложение для загрузки фото с сайта NASA интегрированное в Telegram.
 
 ## JavaScript
