@@ -37,6 +37,7 @@
 
 ## Java
 
+- [Программа для переворачивания строки](https://github.com/pyLexxDramma/reverse_string) - Программа для переворачивания строки
 - [Приложение для загрузки фото с сайта NASA](https://github.com/pyLexxDramma/nasa_bot) - Приложение для загрузки фото с сайта NASA интегрированное в Telegram.
 
 ## JavaScript
