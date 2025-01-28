@@ -56,7 +56,7 @@
 
 - [Разработка интерфейса для сайта Hacker News](https://github.com/pyLexxDramma/hacker_news) - Интерфейс для сайта Hacker News из двух страниц
 - [Создание текстовых компонентов](https://github.com/pyLexxDramma/my-text-components) - Создание страницы, отображающей список компонентов с помощью библиотеки React.
-- [Проект, использующий React Router и Redux Saga](https://github.com/pyLexxDramma/list_and_details) - Проект, использующий React Router и Redux Saga
+- [Проект, использующий React Router и Redux Saga](https://github.com/pyLexxDramma/list_and_details) - Веб-приложение на React с Redux Saga для отображения данных с API
 - [Разработка веб-приложения транслитерации](https://github.com/pyLexxDramma/transliteration-app) - Веб-приложение, разработанное для демонстрации динамической транслитерации текста, с использованием JavaScript на клиентской стороне и Node.js с Express.js на серверной. 
 - [Разработка надежного API для управления пользователями и ролями](https://github.com/pyLexxDramma/UserService) - Микросервис, разработанный на Node.js с использованием Express.js, для управления пользователями и их ролями в приложении.
   
