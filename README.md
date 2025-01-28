@@ -38,7 +38,7 @@
   
 ##  C#
   
-- [Финансовый трекер](https://github.com/pyLexxDramma/financial_tracker) - Приложение, предназначенное для отслеживания финансовых транзакций пользователя.
+- [FinancialTracker](https://github.com/pyLexxDramma/FinancialTracker) - Приложение для отслеживания финансовых транзакций
 
 ## Java
      
