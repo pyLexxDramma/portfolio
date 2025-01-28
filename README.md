@@ -1,3 +1,11 @@
+## Навыки:
+
+Языки: Python, JavaScript, Node.js, C#.
+Backend: REST API, Node.js (Express.js), базы данных, асинхронность, работа с API, обработка данных, хранение данных.
+Frontend: React.js, HTML, CSS, JavaScript, адаптивность, кроссбраузерность.
+Telegram Bots: Telegram Bot API (pyTelegramBotAPI), обработка сообщений, интерактивность, управление состоянием.
+Общие: Алгоритмы, структуры данных, обработка ошибок, юнит-тестирование, CI/CD, Git.
+
 ## Backend Development:
 
 - Node.js и Express.js: Опыт разработки серверной части приложений с использованием Node.js и фреймворка Express.js для создания RESTful API и обработки запросов. 
