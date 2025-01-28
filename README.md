@@ -34,8 +34,7 @@
 
 ## TypeScript
 
-- [Приложение (SPA) для конвертирования валют](https://github.com/pyLexxDramma/currency_converter) - Одностраничное приложение (SPA) для конвертирования валют.
-  
+- [CurrencyConverter](https://github.com/pyLexxDramma/CurrencyConverter) - Приложение, разработанное для конвертации валют с учетом актуальных курсов и базовой валюты.
 ##  C#
   
 - [FinancialTracker](https://github.com/pyLexxDramma/FinancialTracker) - Приложение для отслеживания финансовых транзакций
