@@ -48,7 +48,7 @@
 - [Программа для перестановки двух значений без помощи третьей переменной](https://github.com/pyLexxDramma/swap_values_without_temp) - Поменять местами значения, хранящиеся в двух переменных, без использования третьей переменной.
 - [Программа для подсчета количества слов в строке](https://github.com/pyLexxDramma/word_count) - Подсчет количества конкретных слов в строке, используя HashMap.
 
-## Проекты:
+
   
 - [NASAPhotoTelegram](https://github.com/pyLexxDramma/NASAPhotoTelegram) - Интеграция API NASA с Telegram для загрузки фото.
 
