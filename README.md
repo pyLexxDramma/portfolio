@@ -11,12 +11,16 @@
 - Python
 - C#
 - JavaScript
-- HTML/CSS
+- HTML
+- CSS
 - Flask
 - TypeScript
 - React.js
+- React Router
 - Node.js
 - Express.js
+- Redux
+- Redux Saga
 - XML
 - Java
 - PostgreSQL
