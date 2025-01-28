@@ -16,8 +16,14 @@
 - TypeScript
 - React.js
 - Node.js
+- Express.js
 - XML
 - Java
+- PostgreSQL
+- Sequelize
+- JWT
+- Passport.js
+- dotenv
 
 ## Python
 
@@ -50,6 +56,7 @@
 - [Создание текстовых компонентов](https://github.com/pyLexxDramma/my-text-components) - Создание страницы, отображающей список компонентов с помощью библиотеки React.
 - [Проект, использующий React Router и Redux Saga](https://github.com/pyLexxDramma/list_and_details) - Проект, использующий React Router и Redux Saga
 - [Разработка веб-приложения транслитерации](https://github.com/pyLexxDramma/transliteration-app) - Разработка веб-приложения транслитерации
-
+- [Разработка надежного API для управления пользователями и ролями](https://github.com/pyLexxDramma/UserService) - микросервис, разработанный на Node.js с использованием Express.js, для управления пользователями и их ролями в приложении.
+  
 ## Связаться со мной
 - [Email](lexxdramma@vk.com)
