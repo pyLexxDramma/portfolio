@@ -41,12 +41,15 @@
 - [Финансовый трекер](https://github.com/pyLexxDramma/financial_tracker) - Приложение, предназначенное для отслеживания финансовых транзакций пользователя.
 
 ## Java
-
+     
 - [Программа для переворачивания строки](https://github.com/pyLexxDramma/reverse_string) - Программа для переворачивания строки
 - [Программа для переворота последовательности символов](https://github.com/pyLexxDramma/reverse_character_sequence) - Программа для переворота последовательности символов в строке без использования встроенной в String функции reverse().
 - [Программа для перестановки двух значений при помощи третьей переменной](https://github.com/pyLexxDramma/swap_values) - Поменять местами значения, хранящиеся в двух переменных с помощью третьей переменной.
 - [Программа для перестановки двух значений без помощи третьей переменной](https://github.com/pyLexxDramma/swap_values_without_temp) - Поменять местами значения, хранящиеся в двух переменных, без использования третьей переменной.
 - [Программа для подсчета количества слов в строке](https://github.com/pyLexxDramma/word_count) - Подсчет количества конкретных слов в строке, используя HashMap.
+
+
+  
 - [NASAPhotoTelegram](https://github.com/pyLexxDramma/NASAPhotoTelegram) - Интеграция API NASA с Telegram для загрузки фото.
 
 ## JavaScript
