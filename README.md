@@ -29,7 +29,7 @@
 - [Резервное копирование с VK](https://github.com/pyLexxDramma/photo_vk) - Программа для резервного копирования фотографий с профиля(аватарок).
 - [Обход матрицы в спиральном порядке](https://github.com/pyLexxDramma/spiral_matrix) -  В этом проекте реализовано решение для обхода матрицы в спиральном порядке. Матрица извлекается из удаленного URL-адреса и обрабатывается для получения желаемого результата.
 - [Telegram-бот для регистрации автомобилей](https://github.com/pyLexxDramma/car_registration_bot) -  Telegram-бот, предназначенный для упрощения процесса регистрации автомобилей жителей жилого комплекса.
-- [Telegram-бот с редактированием изображений](https://github.com/pyLexxDramma/image_telebot) - Заданное редактирование изображения.
+- [ImageCaptionBot](https://github.com/pyLexxDramma/ImageCaptionBot) - Telegram-бот для бработки изображений, случайной генерации и сохранением данных.
 - [TelegramVotingBot](https://github.com/pyLexxDramma/TelegramVotingBot) -Telegram-бот для проведения голосования среди пользователей.
 
 ## TypeScript
