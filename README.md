@@ -21,6 +21,7 @@
 - Passport.js
 - dotenv
 - LevelDB
+- Axios 
 
 
 ## Python
@@ -46,7 +47,7 @@
 - [Программа для перестановки двух значений при помощи третьей переменной](https://github.com/pyLexxDramma/swap_values) - Поменять местами значения, хранящиеся в двух переменных с помощью третьей переменной.
 - [Программа для перестановки двух значений без помощи третьей переменной](https://github.com/pyLexxDramma/swap_values_without_temp) - Поменять местами значения, хранящиеся в двух переменных, без использования третьей переменной.
 - [Программа для подсчета количества слов в строке](https://github.com/pyLexxDramma/word_count) - Подсчет количества конкретных слов в строке, используя HashMap.
-- [NASAPhotoTelegram](https://github.com/pyLexxDramma/nasa_bot) - Интеграция API NASA с Telegram для загрузки фото.
+- [NASAPhotoTelegram](https://github.com/pyLexxDramma/NASAPhotoTelegram) - Интеграция API NASA с Telegram для загрузки фото.
 
 ## JavaScript
 
