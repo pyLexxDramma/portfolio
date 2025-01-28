@@ -30,7 +30,7 @@
 - [Обход матрицы в спиральном порядке](https://github.com/pyLexxDramma/spiral_matrix) -  В этом проекте реализовано решение для обхода матрицы в спиральном порядке. Матрица извлекается из удаленного URL-адреса и обрабатывается для получения желаемого результата.
 - [Telegram-бот для регистрации автомобилей](https://github.com/pyLexxDramma/car_registration_bot) -  Telegram-бот, предназначенный для упрощения процесса регистрации автомобилей жителей жилого комплекса.
 - [Telegram-бот с редактированием изображений](https://github.com/pyLexxDramma/image_telebot) - Заданное редактирование изображения.
-- [Telegram-бот для опросов](https://github.com/pyLexxDramma/bot_questionnaire) - Telegram-бот для опросов/голосований.
+- [TelegramVotingBot](https://github.com/pyLexxDramma/TelegramVotingBot) -Telegram-бот для проведения голосования среди пользователей.
 
 ## TypeScript
 
