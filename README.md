@@ -26,7 +26,7 @@
 
 ## Python
 
-- [Резервное копирование с VK](https://github.com/pyLexxDramma/photo_vk) - Программа для резервного копирования фотографий с профиля(аватарок).
+- [VKPhotoBackup](https://github.com/pyLexxDramma/VKPhotoBackup) - Проект для резервного копирования фотографий с профиля (аватарок) и альбомов пользователя VK в облачные хранилища: Яндекс.Диск и OpenAI Drive.
 - [SpiralMatrixTraversal](https://github.com/pyLexxDramma/SpiralMatrixTraversal) -  В этом проекте реализован алгоритм обхода матрицы по спирали.
 - [AutoBot](https://github.com/pyLexxDramma/AutoBot) - Telegram-бот, предназначенный для автоматизации процесса регистрации автомобилей жителей жилого комплекса
 - [ImageCaptionBot](https://github.com/pyLexxDramma/ImageCaptionBot) - Telegram-бот для бработки изображений, случайной генерации и сохранением данных.
