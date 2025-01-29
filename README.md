@@ -79,7 +79,8 @@
 - [Проект, использующий React Router и Redux Saga](https://github.com/pyLexxDramma/ReactComponentList) - Веб-приложение на React с Redux Saga для отображения данных с API
 - [Разработка веб-приложения транслитерации](https://github.com/pyLexxDramma/WebTransliteration) - Веб-приложение, разработанное для демонстрации динамической транслитерации текста, с использованием JavaScript на клиентской стороне и Node.js с Express.js на серверной. 
 - [Разработка надежного API для управления пользователями и ролями](https://github.com/pyLexxDramma/UserService) - Микросервис, разработанный на Node.js с использованием Express.js, для управления пользователями и их ролями в приложении.
-- [Microservices_Communication](https://github.com/pyLexxDramma/Microservices_Communication)  - Данный проект является второй частью реализации кейса по созданию микросервисной архитектуры. 
+- [Microservices_Communication](https://github.com/pyLexxDramma/Microservices_Communication)  - Данный проект является второй частью реализации кейса по созданию микросервисной архитектуры.
+- [identifier_generator](https://github.com/pyLexxDramma/identifier_generator) - C++ библиотекa для генерации уникальных идентификаторов.
   
 ## Связаться со мной
 - [Email](lexxdramma@vk.com)
