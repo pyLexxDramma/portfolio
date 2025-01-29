@@ -20,6 +20,7 @@
 - [Разработка надежного API для управления пользователями и ролями](https://github.com/pyLexxDramma/UserService) - Микросервис, разработанный на Node.js с использованием Express.js, для управления пользователями и их ролями в приложении.
 - [Microservices_Communication](https://github.com/pyLexxDramma/Microservices_Communication)  - Данный проект является второй частью реализации кейса по созданию микросервисной архитектуры.
 - [identifier_generator](https://github.com/pyLexxDramma/identifier_generator) - C++ библиотекa для генерации уникальных идентификаторов.
+- [Personnel Database](https://github.com/pyLexxDramma/WorkersDatabase) - Консольное приложение на C++ для управления базой данных работников.
 
 ## Навыки
 Языки программирования:
