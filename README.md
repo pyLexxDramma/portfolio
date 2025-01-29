@@ -4,7 +4,8 @@
 - [SpiralMatrixTraversal](https://github.com/pyLexxDramma/SpiralMatrixTraversal) -  В этом проекте реализован алгоритм обхода матрицы по спирали.
 - [AutoBot](https://github.com/pyLexxDramma/AutoBot) - Telegram-бот, предназначенный для автоматизации процесса регистрации автомобилей жителей жилого комплекса
 - [ImageCaptionBot](https://github.com/pyLexxDramma/ImageCaptionBot) - Telegram-бот для бработки изображений, случайной генерации и сохранением данных.
-- [TelegramVotingBot](https://github.com/pyLexxDramma/TelegramVotingBot) -Telegram-бот для проведения голосования среди пользователей.
+- [TelegramVotingBot](https://github.com/pyLexxDramma/TelegramVotingBot) - Telegram-бот для проведения голосования среди пользователей.
+- [TelegrammBotIMEI](https://github.com/pyLexxDramma/TelegrammBotIMEI) - Телеграм Бот для проверки IMEI.
 - [CurrencyConverter](https://github.com/pyLexxDramma/CurrencyConverter) - Приложение, разработанное для конвертации валют с учетом актуальных курсов и базовой валюты.
 - [FinancialTracker](https://github.com/pyLexxDramma/FinancialTracker) - Приложение для отслеживания финансовых транзакций
 - [Программа для переворачивания строки](https://github.com/pyLexxDramma/reverse_string) - Программа для переворачивания строки
