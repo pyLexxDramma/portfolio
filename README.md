@@ -22,6 +22,7 @@
 - [Microservices_Communication](https://github.com/pyLexxDramma/Microservices_Communication)  - Данный проект является второй частью реализации кейса по созданию микросервисной архитектуры.
 - [identifier_generator](https://github.com/pyLexxDramma/identifier_generator) - C++ библиотекa для генерации уникальных идентификаторов.
 - [Personnel Database](https://github.com/pyLexxDramma/WorkersDatabase) - Консольное приложение на C++ для управления базой данных работников.
+- [delivery-configurator](https://github.com/pyLexxDramma/delivery-configurator) - Конфигуратор стоимости доставки.
 
 ## Навыки
 Языки программирования:
