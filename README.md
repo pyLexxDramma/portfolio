@@ -23,6 +23,7 @@
 - [identifier_generator](https://github.com/pyLexxDramma/identifier_generator) - C++ библиотекa для генерации уникальных идентификаторов.
 - [Personnel Database](https://github.com/pyLexxDramma/WorkersDatabase) - Консольное приложение на C++ для управления базой данных работников.
 - [delivery-configurator](https://github.com/pyLexxDramma/delivery-configurator) - Конфигуратор стоимости доставки.
+- [Прогноз погоды с офлайн режимом](https://github.com/pyLexxDramma/WeatherApp) - Приложение для Android, разработанное на языке Kotlin, которое предоставляет пользователям актуальную информацию о погоде в различных городах. Приложение поддерживает офлайн-режим и позволяет пользователям добавлять свои города.
 
 ## Навыки
 Языки программирования:
@@ -36,6 +37,7 @@
 - HTML
 - CSS
 - TypeScript
+- Kotlin
   
 ## Инструменты и технологии:
 
@@ -55,37 +57,14 @@
 - FlywayDB
 - Redux
 - axios
+- Android SDK
+- Android Architecture Components (ViewModel, LiveData, Room)
+- REST API (Retrofit)
+- JSON parsing
+- SQLite
+- Gradle
+- Unit & UI testing (JUnit, Mockito)
 
-- Разработка RESTful API с использованием Node.js и Express.js
-- Работа с базами данных (PostgreSQL, LevelDB), включая создание и миграции
-- Асинхронное программирование с использованием async/await
-- Интеграция с различными API (Telegram, NASA, VK и др.)
-- Реализация JWT-аутентификации и управление состоянием
-  
-## Frontend Development:
-
-- Создание пользовательских интерфейсов с React.js, HTML, CSS, JavaScript
-- Адаптивный и кроссбраузерный дизайн
-- Управление состоянием с использованием React Context API и Redux
-
-## Telegram Bot Development:
-
-- Разработка ботов с использованием Telegram Bot API (pyTelegramBotAPI)
-- Обработка сообщений и автоматизация задач
-
-## Общие навыки программирования:
-
-- Алгоритмы и структуры данных, обработка ошибок
-- Юнит-тестирование и компонентное тестирование
-- CI/CD с использованием GitHub Actions
-- Работа с зависимостями и управление версиями
-
-## Навыки разработки:
-
-- Объектно-ориентированное программирование (ООП)
-- Создание статических библиотек и работа с командной строкой
-- Анализ и исправление ошибок, работа с документацией
-- Следование стандартам кодирования
 
   
 ## Связаться со мной
