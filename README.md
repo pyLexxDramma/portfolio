@@ -27,44 +27,73 @@
 - [Парсер новостей на Python](https://github.com/pyLexxDramma/news_parser.py) - Парсинг RSS-лент.
 
 ## Навыки
-Языки программирования:
+# Языки программирования:
 
 - Python
 - JavaScript
-- Node.js,
-- C#
+- TypeScript
 - C++
+- C#
 - Java
+- Kotlin
 - HTML
 - CSS
-- TypeScript
-- Kotlin
-  
-## Инструменты и технологии:
+- PHP
+- Node.js
+- 
+# Системы контроля версий:
 
-- g++
-- ar
-- Doxygen
 - Git
 - GitHub
 - GitLab
+
+# CI/CD и автоматизация:
+
 - GitHub Actions
+
+# Управление зависимостями и сборка:
+
+- Gradle
+- ar (архиватор, часто используется при сборке C/C++)
+- g++ (C++ компилятор)
+
+# Документация:
+
+- Doxygen
+
+# Базы данных:
+
 - PostgreSQL
 - LevelDB
-- pyTelegramBotAPI
-- Express.js
-- JWT (JSON Web Token)
-- dotenv
+- SQLite
 - FlywayDB
-- Redux
-- axios
+
+# Backend разработка:
+
+- Express.js (веб-фреймворк для Node.js)
+- JWT (JSON Web Token)
+- REST API (Retrofit)
+- dotenv (для хранения переменных окружения)
+-  pyTelegramBotAPI (библиотека для Telegram ботов)
+
+# Frontend разработка:
+
+- Redux (библиотека для управления состоянием)
+- axios (HTTP-клиент)
+- JSON parsing
+
+# Android разработка:
+
 - Android SDK
 - Android Architecture Components (ViewModel, LiveData, Room)
 - REST API (Retrofit)
-- JSON parsing
-- SQLite
-- Gradle
+
+# Тестирование:
+
 - Unit & UI testing (JUnit, Mockito)
+
+# UI
+
 - GUI
 
 
