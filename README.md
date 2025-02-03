@@ -65,6 +65,7 @@
 - SQLite
 - Gradle
 - Unit & UI testing (JUnit, Mockito)
+- GUI
 
 
   
