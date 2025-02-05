@@ -81,6 +81,7 @@
 - [delivery-configurator](https://github.com/pyLexxDramma/delivery-configurator) - Конфигуратор стоимости доставки.
 - [Прогноз погоды с офлайн режимом](https://github.com/pyLexxDramma/WeatherApp) - Приложение для Android, разработанное на языке Kotlin, которое предоставляет пользователям актуальную информацию о погоде в различных городах. Приложение поддерживает офлайн-режим и позволяет пользователям добавлять свои города.
 - [Парсер новостей на Python](https://github.com/pyLexxDramma/news_parser.py) - Парсинг RSS-лент.
+- [React приложение "Список дел" с MobX](https://github.com/pyLexxDramma/todo-list) - Веб-приложение "Список дел", разработанное на React с использованием MobX для управления состоянием.
 
   
 
