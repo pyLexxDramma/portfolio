@@ -83,6 +83,7 @@
 - [Парсер новостей на Python](https://github.com/pyLexxDramma/news_parser.py) - Парсинг RSS-лент.
 - [React приложение "Список дел" с MobX](https://github.com/pyLexxDramma/todo-list) - Веб-приложение "Список дел", разработанное на React с использованием MobX для управления состоянием.
 - [Seminar App](https://github.com/pyLexxDramma/seminar-app) - Приложение для управления семинарами, разработанное в качестве демонстрации навыков работы с React и взаимодействия с API.
+- [Advanced Calculator](https://github.com/pyLexxDramma/calculator) - Веб-приложение, представляющее собой продвинутый калькулятор, который поддерживает различные математические операции, включая сложные выражения с использованием скобок. 
 
   
 
