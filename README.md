@@ -80,7 +80,7 @@
 - [Веб-скрепер для образовательных курсов Нетологии](https://github.com/pyLexxDramma/web_scraper) - Приложение на Python, которое использует библиотеки requests, BeautifulSoup и tkinter для извлечения информации о курсах с сайта Нетологии.
 - [Post-it Note Application](https://github.com/pyLexxDramma/post_it_note) - Это Flask-приложение представляет собой интерфейс для создания заметок с такими функциями, как категоризация, напоминания и переключатель темной/светлой темы. Пользователи могут создавать, редактировать, удалять и искать заметки.
 - [SystemMonitor](https://github.com/pyLexxDramma/SystemMonitor) - Десктопное приложение для Windows, разработанное на Python с использованием библиотеки Tkinter, которое предоставляет пользователю информацию о текущем состоянии его системы.
-- [Expense Tracker](https://github.com/pyLexxDramma/ExpenseTracker) - Десктопное приложение для отслеживания личных расходов и доходов.
+- [Expense Tracker](https://github.com/pyLexxDramma/ExpenseTracker) - Десктопное приложение для отслеживания личных расходов и доходов, разработанное с использованием Python и библиотеки PyQt5.
 
  
 
