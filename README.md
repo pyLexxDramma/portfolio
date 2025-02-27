@@ -81,7 +81,10 @@
   <img src="https://github.com/devicons/devicon/blob/master/icons/dreamweaver/dreamweaver-original.svg" title="Dreamweaver" alt="Dreamweaver" width="40" height="40";/>&nbsp;
   <img src="https://github.com/devicons/devicon/blob/master/icons/express/express-original.svg" title="Express" alt="Express" width="40" height="40";/>&nbsp;
   <img src="https://github.com/devicons/devicon/blob/master/icons/fastapi/fastapi-original.svg" title="FastApi" alt="FastApi" width="40" height="40";/>&nbsp;
-  <img src="https://github.com/devicons/devicon/blob/master/icons/docker/docker-original.svg" title="Docker" alt="Docker" width="40" height="40"/>&nbsp;
+  <img src="https://github.com/devicons/devicon/blob/master/icons/figma/figma-original.svg" title="Figma" alt="Figma" width="40" height="40"/>&nbsp;
+  <img src="https://github.com/devicons/devicon/blob/master/icons/filezilla/filezilla-original.svg" title="FilleZilla" alt="FileZilla" width="40" height="40";/>&nbsp;
+  <img src="https://github.com/devicons/devicon/blob/master/icons/firefox/firefox-original.svg" title="Firefox" alt="Firefox" width="40" height="40";/>&nbsp;
+  <img src="https://github.com/devicons/devicon/blob/master/icons/flask/flask-original.svg" title="Flask" alt="Flask" width="40" height="40"/>&nbsp;
 
 
 
