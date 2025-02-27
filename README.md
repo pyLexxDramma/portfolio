@@ -1,4 +1,7 @@
-![Фото](https://avatars.githubusercontent.com/u/190099490?v=4)
+
+<p align="center">
+  <img src="https://avatars.githubusercontent.com/u/190099490?v=4" width="100px" height="100px">
+</p>
 
 <div id="header" align="center">  
 <img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExem9kYzA0bG11MDVyZnMzNnNsZ2JnMTVjOWdhY2o1bHZmMWY0anZpdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/coxQHKASG60HrHtvkt/giphy.gif" width="100"/>
