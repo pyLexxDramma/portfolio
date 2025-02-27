@@ -52,6 +52,9 @@
 ## SQL для Python 🐍:
 * SQL-запросы любой сложности 💪
 * Psycopg2, SQLAlchemy 🧩
+---
+
+### :hammer_and_wrench: Languages and Tools :
 
 
 <div>
