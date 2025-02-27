@@ -1,7 +1,8 @@
 # Привет!
 
 <div id="header" align="center">  
-<img src=https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExbml6OWF3cTJpb3hnbHRuYzMwNnRvc3ZtZzIwcGxud3plaWdrcG9wZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT9IgzoKnwFNmISR8I/giphy.gif width="100"/></div>
+<img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExem9kYzA0bG11MDVyZnMzNnNsZ2JnMTVjOWdhY2o1bHZmMWY0anZpdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/coxQHKASG60HrHtvkt/giphy.gif" width="100"/>
+</div>
 
 <div id="header" align="center">
    <img src="https://komarev.com/ghpvc/?username=pyLexxDramma&style=flat-square&color=blue" alt=""/>
