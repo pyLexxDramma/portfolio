@@ -3,7 +3,7 @@
 <div id="header" align="center">  
 <img src=https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExbml6OWF3cTJpb3hnbHRuYzMwNnRvc3ZtZzIwcGxud3plaWdrcG9wZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT9IgzoKnwFNmISR8I/giphy.gif width="100"/></div>
 
-![](https://komarev.com/ghpvc/?username=your-github-username&color=green)
+<img src="https://komarev.com/ghpvc/?username=pyLexxDramma&style=flat-square&color=blue" alt=""/>
 
 Я Full-Stack разработчик с опытом работы в различных областях, от веб-приложений до разработки микросервисов и мобильных приложений. Я увлечен созданием эффективных и масштабируемых решений, постоянно стремлюсь к обучению и улучшению.
 
