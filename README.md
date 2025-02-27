@@ -7,8 +7,8 @@
 <div id="header" align="center">
    <img src="https://komarev.com/ghpvc/?username=pyLexxDramma&style=flat-square&color=blue" alt=""/>
    <h1>
-  hey there
-  <img src="https://media.giphy.com/media/hvRJCLFzcasrR4ia7z/giphy.gif" width="30px"/>
+  Hi!
+  <img src="https://media.giphy.com/media/hvRJCLFzcasrR4ia7z/giphy.gif" width="15px"/>
 </h1>
    </div>
 
