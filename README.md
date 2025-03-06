@@ -6,6 +6,7 @@
 - [Программа для перестановки двух значений без помощи третьей переменной](https://github.com/pyLexxDramma/swap_values_without_temp) - Поменять местами значения, хранящиеся в двух переменных, без использования третьей переменной.
 - [Программа для подсчета количества слов в строке](https://github.com/pyLexxDramma/word_count) - Подсчет количества конкретных слов в строке, используя HashMap.
 - [Симулятор игры в кости](https://github.com/pyLexxDramma/dice_game) - Приложение, написанное на Python с использованием библиотеки Tkinter. Оно предоставляет возможность играть в кости, управлять игроками, просматривать статистику и сохранять прогресс игры.
+- [Text Analyzer](https://github.com/pyLexxDramma/text-analyzer) - Приложение на Python, которое позволяет анализировать текстовые данные.
 - [Веб-скрепер для образовательных курсов Нетологии](https://github.com/pyLexxDramma/web_scraper) - Приложение на Python, которое использует библиотеки requests, BeautifulSoup и tkinter для извлечения информации о курсах с сайта Нетологии.
 - [VKPhotoBackup](https://github.com/pyLexxDramma/VKPhotoBackup) - Проект для резервного копирования фотографий с профиля (аватарок) и альбомов пользователя VK в облачные хранилища: Яндекс.Диск и GPT-OPEN Drive.
 - [SpiralMatrixTraversal](https://github.com/pyLexxDramma/SpiralMatrixTraversal) - В этом проекте реализован алгоритм обхода матрицы по спирали.
