@@ -39,6 +39,7 @@
 - [English_Teacher_Bot](https://github.com/pyLexxDramma/English_Teacher_Bot) - Этот бот помогает изучать английский язык с помощью карточек слов.
 - [Приложение для управления водителями и заказами](https://github.com/pyLexxDramma/DriversAndOrders) - Приложение Windows Forms для управления информацией о водителях и заказах, разработанное на C# с использованием локальной базы данных SQLite.
 - [XML Редактор с Валидацией по XSD](https://github.com/pyLexxDramma/xml-validator-server) - Веб-интерфейс для редактирования XML.
+- [Валидатор XML со встроенным редактором XSD схем](https://github.com/pyLexxDramma/xml-validator-redactor) - Веб-интерфейс для проверки XML-файлов на соответствие XSD схемам с возможностью редактирования XMD и XML.
 
 
 
