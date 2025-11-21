@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статус задачи</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>Статус задачи: {{ task.task_id }}</h1>
+    <p><strong>Статус:</strong> {{ task.status }}</p>
+    <p><strong>Прогресс:</strong> {{ task.progress }}</p>
+    {% if task.error %}
+    <p class="error"><strong>Ошибка:</strong> {{ task.error }}</p>
+    {% endif %}
+    <a href="/">Вернуться на главную</a>
+</div>
+<script>
+    const taskId = '{{ task.task_id }}';
+    function checkStatus() {
+        fetch(`/tasks/${taskId}/status`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+                    location.reload();
+                } else {
+                    setTimeout(checkStatus, 3000);
+                }
+            });
+    }
+    if ('{{ task.status }}' === 'PENDING' || '{{ task.status }}' === 'RUNNING') {
+        setTimeout(checkStatus, 3000);
+    }
+</script>
+</body>
+</html>
+

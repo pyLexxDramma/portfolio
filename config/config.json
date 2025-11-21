@@ -1,0 +1,32 @@
+{
+  "app": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "password": "admin123"
+  },
+  "parser": {
+    "max_records": 1000,
+    "scroll_wait_time": 1.0,
+    "scroll_max_iter": 200,
+    "yandex_scroll_step": 500,
+    "gis_scroll_step": 500,
+    "yandex_reviews_scroll_max_iter": 100,
+    "yandex_reviews_scroll_min_iter": 30,
+    "gis_reviews_scroll_max_iter": 100,
+    "gis_reviews_scroll_min_iter": 30
+  },
+  "proxy": {
+    "enabled": false,
+    "server": "",
+    "port": 8080,
+    "username": "",
+    "password": "",
+    "type": "http"
+  },
+  "email": {
+    "smtp_server": "",
+    "smtp_port": 587,
+    "smtp_user": "",
+    "smtp_password": ""
+  }
+}

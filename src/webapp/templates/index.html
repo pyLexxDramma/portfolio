@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Scraper</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>Web Scraper</h1>
+        <a href="/logout" style="color: #666; text-decoration: none; font-size: 0.9em;">Выйти</a>
+    </div>
+
+    {% if error %}
+    <div class="message error">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+    <div class="message success">{{ success }}</div>
+    {% endif %}
+
+    <form action="/start_parsing" method="post">
+        <div class="form-group">
+            <label for="company_name">Введите название компании:</label>
+            <input type="text" id="company_name" name="company_name" placeholder="Например: ООО Ромашка" required>
+        </div>
+
+        <div class="form-group">
+            <label for="company_site">Введите сайт компании:</label>
+            <input type="url" id="company_site" name="company_site" placeholder="Например: romashka.ru" required>
+        </div>
+
+        <div class="form-group">
+            <label for="source">Выберите источник:</label>
+            <select id="source" name="source" required>
+                <option value="">-- Выберите --</option>
+                <option value="both" selected>Оба источника (Яндекс + 2GIS)</option>
+                <option value="yandex">Яндекс.Карты</option>
+                <option value="2gis">2GIS</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Ваш email:</label>
+            <input type="email" id="email" name="email" placeholder="например: user@example.com" required>
+        </div>
+
+        <div class="form-group">
+            <label for="output_filename">Имя файла отчета:</label>
+            <input type="text" id="output_filename" name="output_filename" value="report.csv">
+        </div>
+
+        <button type="submit">Поехали!</button>
+    </form>
+</div>
+</body>
+</html>
+
