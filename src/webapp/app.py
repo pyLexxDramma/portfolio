@@ -5,7 +5,8 @@ import threading
 import os
 import urllib.parse
 from fastapi import FastAPI, Request, Depends, HTTPException, Form
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, FileResponse
+from fastapi import status as http_status
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -17,6 +18,7 @@ from src.drivers.selenium_driver import SeleniumDriver
 from src.parsers.yandex_parser import YandexParser
 from src.parsers.gis_parser import GisParser
 from src.storage.csv_writer import CSVWriter
+from src.storage.pdf_writer import PDFWriter
 from src.utils.task_manager import TaskStatus, active_tasks, create_task, update_task_status
 from src.config.settings import Settings
 
@@ -111,21 +113,21 @@ def _generate_gis_url(company_name: str, company_site: str, search_scope: str, l
 def _run_parser_task(parser_class, url: str, task_id: str, source: str):
     driver = None
     try:
-        update_task_status(task_id, TaskStatus.RUNNING, "Инициализация драйвера...")
+        update_task_status(task_id, "RUNNING", "Инициализация драйвера...")
         driver = SeleniumDriver(settings=settings)
         driver.start()
         
-        update_task_status(task_id, TaskStatus.RUNNING, f"Запуск парсера {source}...")
+        update_task_status(task_id, "RUNNING", f"Запуск парсера {source}...")
         parser = parser_class(driver=driver, settings=settings)
         
         def update_progress(msg: str):
-            update_task_status(task_id, TaskStatus.RUNNING, f"{source}: {msg}")
+            update_task_status(task_id, "RUNNING", f"{source}: {msg}")
         
         parser.set_progress_callback(update_progress)
         
         result = parser.parse(url=url)
         
-        update_task_status(task_id, TaskStatus.RUNNING, f"Парсинг {source} завершен")
+        update_task_status(task_id, "RUNNING", f"Парсинг {source} завершен")
         return result, None
     except Exception as e:
         logger.error(f"Error in parser task {task_id} ({source}): {e}", exc_info=True)
@@ -159,7 +161,7 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
     def run_parsing():
         try:
             if form_data.source == 'both':
-                update_task_status(task_id, TaskStatus.RUNNING, "Запуск парсинга обоих источников...")
+                update_task_status(task_id, "RUNNING", "Запуск парсинга обоих источников...")
                 
                 yandex_url = _generate_yandex_url(form_data.company_name, form_data.search_scope, form_data.location)
                 gis_url = _generate_gis_url(form_data.company_name, form_data.company_site, form_data.search_scope, form_data.location)
@@ -195,15 +197,15 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                     task.detailed_results = all_cards
                 
                 if yandex_error or gis_error:
-                    update_task_status(task_id, TaskStatus.COMPLETED, f"Завершено с ошибками: Yandex={bool(yandex_error)}, 2GIS={bool(gis_error)}")
+                    update_task_status(task_id, "COMPLETED", f"Завершено с ошибками: Yandex={bool(yandex_error)}, 2GIS={bool(gis_error)}")
                 else:
-                    update_task_status(task_id, TaskStatus.COMPLETED, f"Парсинг завершен. Найдено карточек: {len(all_cards)}")
+                    update_task_status(task_id, "COMPLETED", f"Парсинг завершен. Найдено карточек: {len(all_cards)}")
             elif form_data.source == 'yandex':
                 url = _generate_yandex_url(form_data.company_name, form_data.search_scope, form_data.location)
                 result, error = _run_parser_task(YandexParser, url, task_id, "Yandex")
                 
                 if error:
-                    update_task_status(task_id, TaskStatus.FAILED, f"Ошибка: {error}", error=error)
+                    update_task_status(task_id, "FAILED", f"Ошибка: {error}", error=error)
                 elif result and result.get('cards_data'):
                     writer = CSVWriter(settings=settings)
                     results_dir = settings.app_config.writer.output_dir
@@ -217,15 +219,15 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                     task = active_tasks[task_id]
                     task.result_file = form_data.output_filename
                     task.detailed_results = result['cards_data']
-                    update_task_status(task_id, TaskStatus.COMPLETED, f"Парсинг завершен. Найдено карточек: {len(result['cards_data'])}")
+                    update_task_status(task_id, "COMPLETED", f"Парсинг завершен. Найдено карточек: {len(result['cards_data'])}")
                 else:
-                    update_task_status(task_id, TaskStatus.COMPLETED, "Парсинг завершен. Карточки не найдены")
+                    update_task_status(task_id, "COMPLETED", "Парсинг завершен. Карточки не найдены")
             elif form_data.source == '2gis':
                 url = _generate_gis_url(form_data.company_name, form_data.company_site, form_data.search_scope, form_data.location)
                 result, error = _run_parser_task(GisParser, url, task_id, "2GIS")
                 
                 if error:
-                    update_task_status(task_id, TaskStatus.FAILED, f"Ошибка: {error}", error=error)
+                    update_task_status(task_id, "FAILED", f"Ошибка: {error}", error=error)
                 elif result and result.get('cards_data'):
                     writer = CSVWriter(settings=settings)
                     results_dir = settings.app_config.writer.output_dir
@@ -239,12 +241,12 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                     task = active_tasks[task_id]
                     task.result_file = form_data.output_filename
                     task.detailed_results = result['cards_data']
-                    update_task_status(task_id, TaskStatus.COMPLETED, f"Парсинг завершен. Найдено карточек: {len(result['cards_data'])}")
+                    update_task_status(task_id, "COMPLETED", f"Парсинг завершен. Найдено карточек: {len(result['cards_data'])}")
                 else:
-                    update_task_status(task_id, TaskStatus.COMPLETED, "Парсинг завершен. Карточки не найдены")
+                    update_task_status(task_id, "COMPLETED", "Парсинг завершен. Карточки не найдены")
         except Exception as e:
             logger.error(f"Error in parsing task {task_id}: {e}", exc_info=True)
-            update_task_status(task_id, TaskStatus.FAILED, f"Критическая ошибка: {str(e)}", error=str(e))
+            update_task_status(task_id, "FAILED", f"Критическая ошибка: {str(e)}", error=str(e))
     
     thread = threading.Thread(target=run_parsing, daemon=True)
     thread.start()
@@ -309,4 +311,44 @@ async def get_all_tasks():
         }
         tasks_list.append(task_dict)
     return {"tasks": tasks_list}
+
+@app.get("/tasks/{task_id}/download-pdf")
+async def download_pdf_report(request: Request, task_id: str):
+    if not check_auth(request):
+        return RedirectResponse(url="/login", status_code=302)
+    
+    task = active_tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    if task.status != 'COMPLETED':
+        raise HTTPException(status_code=400, detail="Task is not completed yet")
+    
+    try:
+        results_dir = settings.app_config.writer.output_dir
+        os.makedirs(results_dir, exist_ok=True)
+        
+        pdf_filename = f"report_{task_id}.pdf"
+        pdf_path = os.path.join(results_dir, pdf_filename)
+        
+        pdf_writer = PDFWriter(settings=settings)
+        company_name = task.source_info.get('company_name', 'Unknown')
+        company_site = task.source_info.get('company_site', '')
+        pdf_writer.generate_report(
+            output_path=pdf_path,
+            aggregated_data=task.statistics or {},
+            detailed_cards=task.detailed_results or [],
+            company_name=company_name,
+            company_site=company_site
+        )
+        
+        return FileResponse(
+            pdf_path,
+            media_type='application/pdf',
+            filename=pdf_filename,
+            headers={"Content-Disposition": f"attachment; filename={pdf_filename}"}
+        )
+    except Exception as e:
+        logger.error(f"Error generating PDF for task {task_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
 
