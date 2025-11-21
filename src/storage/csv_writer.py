@@ -23,45 +23,45 @@ class CSVWriter(FileWriter):
             output_dir=writer_opts.output_dir
         )
         super().__init__(options=file_writer_options)
-        self._fieldnames: list = None
-        self._header_written: bool = False
+        self.fieldnames: list = None
+        self.header_written: bool = False
         self.file_handle = None
         self.writer = None
 
     def open(self):
-        if not self._file_path:
+        if not self.file_path:
             raise ValueError("File path is not set. Use set_file_path() first.")
 
-        output_dir = os.path.dirname(self._file_path)
+        output_dir = os.path.dirname(self.file_path)
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
             logger.info(f"Created output directory: {output_dir}")
 
         try:
-            self.file_handle = open(self._file_path, 'w', newline='', encoding=self._options.encoding)
+            self.file_handle = open(self.file_path, 'w', newline='', encoding=self.options.encoding)
             self.writer = csv.writer(self.file_handle)
-            logger.info(f"CSV file opened: {self._file_path}")
+            logger.info(f"CSV file opened: {self.file_path}")
         except Exception as e:
-            logger.error(f"Error opening CSV file {self._file_path}: {e}", exc_info=True)
+            logger.error(f"Error opening CSV file {self.file_path}: {e}", exc_info=True)
             raise
 
     def close(self):
         if self.file_handle:
             self.file_handle.close()
-            logger.info(f"CSV file closed. Wrote {self._wrote_count} records.")
+            logger.info(f"CSV file closed. Wrote {self.wrote_count} records.")
 
     def write(self, data: Dict[str, Any]):
         if not self.writer:
             logger.error("CSV writer not initialized. Call open() first.")
             return
 
-        if self._fieldnames is None:
-            self._fieldnames = list(data.keys())
-            if not self._header_written:
-                self.writer.writerow(self._fieldnames)
-                self._header_written = True
+        if self.fieldnames is None:
+            self.fieldnames = list(data.keys())
+            if not self.header_written:
+                self.writer.writerow(self.fieldnames)
+                self.header_written = True
 
-        row = [data.get(field) for field in self._fieldnames]
+        row = [data.get(field) for field in self.fieldnames]
         self.writer.writerow(row)
-        self._wrote_count += 1
+        self.wrote_count += 1
 

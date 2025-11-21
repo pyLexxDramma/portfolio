@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import sys
 import os
 
@@ -12,7 +11,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "src.webapp.app:app",
         host="0.0.0.0",

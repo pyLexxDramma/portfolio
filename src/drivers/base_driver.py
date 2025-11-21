@@ -6,6 +6,23 @@ from selenium.webdriver.remote.webelement import WebElement
 
 logger = logging.getLogger(__name__)
 
+
+class DOMNode:
+    def __init__(self, element_type: str, attributes: dict = None):
+        self.element_type = element_type
+        self.attributes = attributes or {}
+
+    def add_attribute(self, key: str, value: str):
+        self.attributes[key] = value
+
+    def remove_attribute(self, key: str):
+        if key in self.attributes:
+            del self.attributes[key]
+
+    def has_attribute(self, key: str) -> bool:
+        return key in self.attributes
+
+
 class BaseDriver(abc.ABC):
     @abc.abstractmethod
     def wait_response(self, url_pattern: str, timeout: int = 10) -> Optional[Any]:

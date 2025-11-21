@@ -110,258 +110,115 @@ class SeleniumTab:
         try:
             wait_timeout = timeout if timeout is not None else self._default_timeout
             if not self._driver or not self._driver.driver:
-                logger.error("WebDriver not initialized for wait_for_element.")
                 return None
-            return WebDriverWait(self._driver.driver, wait_timeout).until(
-                EC.presence_of_element_located(locator)
-            )
+            wait = WebDriverWait(self._driver.driver, wait_timeout)
+            return wait.until(EC.presence_of_element_located(locator))
         except TimeoutException:
-            logger.warning(f"Timeout waiting for element {locator}.")
-            return None
-        except WebDriverException as e:
-            logger.error(f"WebDriverException in wait_for_element with {locator}: {e}", exc_info=True)
             return None
 
-    def wait_for_elements(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> List[WebElement]:
-        try:
-            wait_timeout = timeout if timeout is not None else self._default_timeout
-            if not self._driver or not self._driver.driver:
-                logger.error("WebDriver not initialized for wait_for_elements.")
-                return []
-            WebDriverWait(self._driver.driver, wait_timeout).until(
-                EC.presence_of_all_elements_located(locator)
-            )
-            return self._driver.driver.find_elements(*locator)
-        except TimeoutException:
-            logger.warning(f"Timeout waiting for elements {locator}.")
-            return []
-        except WebDriverException as e:
-            logger.error(f"WebDriverException in wait_for_elements with {locator}: {e}", exc_info=True)
-            return []
+    def wait_for_response(self, url_pattern: str, timeout: int = 10) -> Optional[str]:
+        return self._driver.wait_response(url_pattern, timeout)
 
 class SeleniumDriver(BaseDriver):
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, proxy: Optional[str] = None):
         self.settings = settings
+        self.proxy = proxy
         self.driver: Optional[Chrome] = None
         self._tab: Optional[SeleniumTab] = None
         self._is_running = False
         self.current_url: Optional[str] = None
+
         self._tab = SeleniumTab(self)
 
-    def _get_proxy_url(self) -> Optional[str]:
-        if not self.settings.proxy.enabled:
-            return None
-        if self.settings.proxy.username and self.settings.proxy.password:
-            return f"{self.settings.proxy.type}://{self.settings.proxy.username}:{self.settings.proxy.password}@{self.settings.proxy.server}:{self.settings.proxy.port}"
-        else:
-            return f"{self.settings.proxy.type}://{self.settings.proxy.server}:{self.settings.proxy.port}"
-
     def _initialize_driver(self):
+        if self.driver is not None:
+            return
+
         options = SeleniumChromeOptions()
         
-        if self.settings.chrome.headless:
-            options.add_argument("--headless")
-            options.add_argument("--disable-gpu")
-            logger.info("Chrome running in headless mode.")
-        else:
-            logger.info("Chrome running in visible mode.")
-        
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option('useAutomationExtension', False)
-        
-        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        
-        if self.settings.chrome.silent_browser:
-            options.add_argument("--log-level=3")
-            options.add_experimental_option('excludeSwitches', ['enable-logging'])
-        
-        if self.settings.chrome.start_maximized and not self.settings.chrome.headless:
-            options.add_argument("--start-maximized")
-
-        proxy_url = self._get_proxy_url()
-        if proxy_url:
-            parsed_proxy = urlparse(proxy_url)
-            username, password = extract_credentials_from_proxy_url(proxy_url)
+        if self.settings.proxy.enabled and self.settings.proxy.server:
+            proxy_url = f"{self.settings.proxy.server}:{self.settings.proxy.port}"
+            username = self.settings.proxy.username or ""
+            password = self.settings.proxy.password or ""
+            
+            if self.proxy:
+                username, password = extract_credentials_from_proxy_url(self.proxy) or (username, password)
+                proxy_url = self.proxy.split('@')[-1] if '@' in self.proxy else proxy_url
             
             if username and password:
-                logger.info(f"Using proxy with authentication: {parsed_proxy.hostname}:{parsed_proxy.port}")
-                try:
-                    proxy_host = parsed_proxy.hostname
-                    proxy_port = parsed_proxy.port or (8080 if parsed_proxy.scheme == 'http' else 443)
-                    extension_dir = create_proxy_auth_extension(proxy_host, proxy_port, username, password)
-                    options.add_argument(f"--load-extension={extension_dir}")
-                    logger.info(f"Proxy auth extension loaded from: {extension_dir}")
-                except Exception as e:
-                    logger.error(f"Failed to create proxy auth extension: {e}. Trying without auth...")
-                    proxy_host = parsed_proxy.hostname
-                    proxy_port = parsed_proxy.port or (8080 if parsed_proxy.scheme == 'http' else 443)
-                    options.add_argument(f"--proxy-server={parsed_proxy.scheme}://{proxy_host}:{proxy_port}")
+                proxy_host = proxy_url.split(':')[0] if ':' in proxy_url else self.settings.proxy.server
+                proxy_port = int(proxy_url.split(':')[1]) if ':' in proxy_url else self.settings.proxy.port
+                proxy_extension_dir = create_proxy_auth_extension(proxy_host, proxy_port, username, password)
+                options.add_argument(f"--load-extension={proxy_extension_dir}")
+                logger.info(f"Proxy auth extension loaded from: {proxy_extension_dir}")
             else:
-                logger.info(f"Using proxy without authentication: {proxy_url}")
-                options.add_argument(f"--proxy-server={proxy_url}")
+                options.add_argument(f'--proxy-server={proxy_url}')
+                logger.info(f"Proxy server configured: {proxy_url}")
         else:
             options.add_argument("--no-proxy-server")
             options.add_argument("--proxy-bypass-list=*")
 
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        
-        try:
-            logger.info("Using ChromeDriverManager to automatically download compatible ChromeDriver...")
-            sys.stdout.flush()
-            chromedriver_path = ChromeDriverManager().install()
-            logger.info(f"ChromeDriverManager downloaded/verified ChromeDriver at: {chromedriver_path}")
-            service = Service(chromedriver_path)
-            
-            logger.info("Creating Chrome WebDriver instance...")
-            sys.stdout.flush()
-            
-            driver_created = threading.Event()
-            driver_result = [None]
-            error_result = [None]
-            
-            def create_driver_thread():
-                try:
-                    logger.info("Thread: Starting Chrome() call...")
-                    sys.stdout.flush()
-                    driver_result[0] = Chrome(service=service, options=options)
-                    logger.info("Thread: Chrome() call completed.")
-                    sys.stdout.flush()
-                except Exception as e:
-                    error_result[0] = e
-                    logger.error(f"Thread: Error in Chrome() call: {e}", exc_info=True)
-                finally:
-                    driver_created.set()
-            
-            thread = threading.Thread(target=create_driver_thread, daemon=True)
-            thread.start()
-            
-            if driver_created.wait(timeout=60):
-                if error_result[0]:
-                    raise error_result[0]
-                self.driver = driver_result[0]
-                if not self.driver:
-                    raise Exception("Chrome WebDriver instance is None after creation")
-                logger.info("Chrome() call completed successfully.")
-            else:
-                raise TimeoutException("Chrome WebDriver creation timed out after 60 seconds.")
-            
-            logger.info("Chrome WebDriver instance created successfully.")
-            self.driver.set_page_load_timeout(60)
-            self.driver.implicitly_wait(5)
-            
-            if self.settings.chrome.start_maximized and not self.settings.chrome.headless:
-                try:
-                    self.driver.maximize_window()
-                    logger.info("Chrome window maximized.")
-                except Exception as e:
-                    logger.warning(f"Could not maximize window: {e}")
-            
-        except WebDriverException as e:
-            logger.error(f"WebDriverException during initialization: {e}", exc_info=True)
-            raise
-        except Exception as e:
-            logger.error(f"General error during WebDriver initialization: {e}", exc_info=True)
-            raise
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
-    def start(self) -> None:
-        if not self._is_running:
-            try:
-                logger.info("=" * 60)
-                logger.info("Starting SeleniumDriver initialization...")
-                logger.info(f"Headless mode: {self.settings.chrome.headless}")
-                logger.info("=" * 60)
-                self._initialize_driver()
-                self._is_running = True
-                logger.info("SeleniumDriver started successfully.")
-            except Exception as e:
-                logger.error(f"Error starting SeleniumDriver: {e}", exc_info=True)
-                raise
-        else:
-            logger.warning("SeleniumDriver is already running.")
+        if self.settings.app_config.headless:
+            options.add_argument("--headless")
 
-    def stop(self) -> None:
-        if self._is_running and self.driver:
-            try:
-                self.driver.quit()
-                self._is_running = False
-                self.driver = None
-                self.current_url = None
-                logger.info("SeleniumDriver stopped.")
-            except WebDriverException as e:
-                logger.error(f"WebDriverException during stop: {e}", exc_info=True)
-            except Exception as e:
-                logger.error(f"Error stopping SeleniumDriver: {e}", exc_info=True)
-        elif not self._is_running:
-            logger.warning("SeleniumDriver is not running.")
-
-    def navigate(self, url: str) -> None:
-        if not self._is_running or not self.driver:
-            raise RuntimeError(f"{self.__class__.__name__} is not running or driver not initialized.")
-        
-        try:
-            self.driver.get(url)
-            self.current_url = self.driver.current_url
-            logger.info(f"Navigated to: {url}")
-        except WebDriverException as e:
-            error_msg = str(e).lower()
-            if 'proxy' in error_msg or 'err_no_supported_proxies' in error_msg or 'net::err_proxy' in error_msg:
-                logger.error(f"Proxy error while navigating to {url}: {e}")
-                if self._get_proxy_url():
-                    logger.warning(f"Current proxy: {self._get_proxy_url()}")
-            else:
-                logger.error(f"WebDriverException navigating to {url}: {e}", exc_info=True)
-            if self.driver: 
-                try:
-                    self.current_url = self.driver.current_url
-                except:
-                    pass
-            raise
-
-    def get_page_source(self) -> str:
-        if not self._is_running or not self.driver:
-            raise RuntimeError(f"{self.__class__.__name__} is not running or driver not initialized.")
-        try:
-            return self.driver.page_source
-        except WebDriverException as e:
-            logger.error(f"WebDriverException getting page source: {e}", exc_info=True)
-            return ""
-
-    def execute_script(self, script: str, *args) -> Any:
-        if not self._is_running or not self.driver:
-            raise RuntimeError(f"{self.__class__.__name__} is not running or driver not initialized.")
-        try:
-            return self.driver.execute_script(script, *args)
-        except WebDriverException as e:
-            logger.error(f"WebDriverException executing script: {e}", exc_info=True)
-            raise
-
-    def get_elements_by_locator(self, locator: Tuple[str, str]) -> List[WebElement]:
-        if not self._is_running or not self.driver:
-            raise RuntimeError(f"{self.__class__.__name__} is not running or driver not initialized.")
-        try:
-            return self.driver.find_elements(*locator)
-        except WebDriverException as e:
-            logger.error(f"WebDriverException getting elements: {e}", exc_info=True)
-            return []
-
-    def wait_response(self, url_pattern: str, timeout: int = 10) -> Optional[Any]:
-        logger.warning("wait_response is not fully implemented for SeleniumDriver")
-        return None
-
-    def get_response_body(self, response: Any) -> Optional[str]:
-        logger.warning("get_response_body is not fully implemented for SeleniumDriver")
-        return None
-
-    def set_default_timeout(self, timeout: int):
-        self._tab.set_default_timeout(timeout)
+        service = Service(ChromeDriverManager().install())
+        self.driver = Chrome(service=service, options=options)
+        self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        self._is_running = True
 
     @property
     def is_running(self) -> bool:
         return self._is_running
 
     @property
-    def tab(self):
+    def tab(self) -> SeleniumTab:
         return self._tab
 
+    def navigate(self, url: str) -> None:
+        if not self.driver:
+            self._initialize_driver()
+        self.driver.get(url)
+        self.current_url = url
+
+    def get_page_source(self) -> str:
+        if not self.driver:
+            return ""
+        return self.driver.page_source
+
+    def execute_script(self, script: str, *args) -> Any:
+        if not self.driver:
+            return None
+        return self.driver.execute_script(script, *args)
+
+    def wait_response(self, url_pattern: str, timeout: int = 10) -> Optional[str]:
+        import re
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            logs = self.driver.get_log('performance') if self.driver else []
+            for log in logs:
+                message = log.get('message', '')
+                if 'Network.responseReceived' in message and re.search(url_pattern, message):
+                    return message
+            time.sleep(0.1)
+        return None
+
+    def get_response_body(self, response_message: str) -> str:
+        return ""
+
+    def close(self) -> None:
+        if self.driver:
+            self.driver.quit()
+            self.driver = None
+            self._is_running = False
+
+    def __enter__(self):
+        self._initialize_driver()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()

@@ -80,7 +80,7 @@ class BaseParser(abc.ABC):
 
         encoded_params = urlencode(query_params)
         return urljoin(base_url, f"?{encoded_params}")
-    
+
     def set_progress_callback(self, callback: Callable[[str], None]) -> None:
         self._progress_callback = callback
 

@@ -94,6 +94,7 @@ class AppConfig(BaseModel):
     root_directory: str = "/"
     environment: str = "development"
     log_level: str = "info"
+    password: Optional[str] = None
     chrome: ChromeSettings = Field(default_factory=ChromeSettings)
     writer: WriterOptions = Field(default_factory=WriterOptions)
 
@@ -114,6 +115,45 @@ class Settings(BaseModel):
             try:
                 load_dotenv(dotenv_path=env_file_path)
                 logger.info(f"Loaded environment variables from: {env_file_path}")
+
+                if os.getenv('PROXY_ENABLED'):
+                    self.proxy.enabled = os.getenv('PROXY_ENABLED', 'false').lower() in ('true', '1', 'yes')
+                if os.getenv('PROXY_SERVER'):
+                    self.proxy.server = os.getenv('PROXY_SERVER', '')
+                if os.getenv('PROXY_PORT'):
+                    try:
+                        self.proxy.port = int(os.getenv('PROXY_PORT', '8080'))
+                    except ValueError:
+                        pass
+                if os.getenv('PROXY_USERNAME'):
+                    self.proxy.username = os.getenv('PROXY_USERNAME', '')
+                if os.getenv('PROXY_PASSWORD'):
+                    self.proxy.password = os.getenv('PROXY_PASSWORD', '')
+                if os.getenv('PROXY_TYPE'):
+                    self.proxy.type = os.getenv('PROXY_TYPE', 'http')
+
+                if os.getenv('SITE_PASSWORD'):
+                    self.app_config.password = os.getenv('SITE_PASSWORD')
+
+                if os.getenv('SMTP_SERVER'):
+                    if not hasattr(self, 'email_settings'):
+                        from pydantic import BaseModel
+                        class EmailSettings(BaseModel):
+                            smtp_server: str = ""
+                            smtp_port: int = 587
+                            smtp_user: str = ""
+                            smtp_password: str = ""
+                        self.email_settings = EmailSettings()
+                    self.email_settings.smtp_server = os.getenv('SMTP_SERVER', '')
+                    if os.getenv('SMTP_PORT'):
+                        try:
+                            self.email_settings.smtp_port = int(os.getenv('SMTP_PORT', '587'))
+                        except ValueError:
+                            pass
+                    if os.getenv('SMTP_USER'):
+                        self.email_settings.smtp_user = os.getenv('SMTP_USER', '')
+                    if os.getenv('SMTP_PASSWORD'):
+                        self.email_settings.smtp_password = os.getenv('SMTP_PASSWORD', '')
             except Exception as e:
                 logger.warning(f"Could not load .env file from {env_file_path}: {e}")
         config_file_path = pathlib.Path(self.config_file or (get_project_root() / "config.json"))
@@ -135,13 +175,26 @@ class Settings(BaseModel):
                                 setattr(self.chrome, key, value)
                     if 'app' in config_data:
                         app_data = config_data['app']
-                        if 'password' in app_data:
-                            pass
+                        if 'password' in app_data and not os.getenv('SITE_PASSWORD'):
+                            self.app_config.password = app_data['password']
                     if 'proxy' in config_data:
                         proxy_data = config_data['proxy']
                         for key, value in proxy_data.items():
-                            if hasattr(self.proxy, key):
+                            if hasattr(self.proxy, key) and not os.getenv(f'PROXY_{key.upper()}'):
                                 setattr(self.proxy, key, value)
+                    if 'email' in config_data:
+                        email_data = config_data['email']
+                        if not hasattr(self, 'email_settings'):
+                            from pydantic import BaseModel
+                            class EmailSettings(BaseModel):
+                                smtp_server: str = ""
+                                smtp_port: int = 587
+                                smtp_user: str = ""
+                                smtp_password: str = ""
+                            self.email_settings = EmailSettings()
+                        for key, value in email_data.items():
+                            if hasattr(self.email_settings, key) and not os.getenv(f'SMTP_{key.upper()}'):
+                                setattr(self.email_settings, key, value)
             except Exception as e:
                 logger.warning(f"Could not load config.json from {config_file_path}: {e}")
 

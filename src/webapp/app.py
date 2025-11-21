@@ -35,9 +35,7 @@ logger = logging.getLogger(__name__)
 
 settings = Settings()
 
-SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "admin123")
-if hasattr(settings.app_config, 'password') and settings.app_config.password:
-    SITE_PASSWORD = settings.app_config.password
+SITE_PASSWORD = os.environ.get("SITE_PASSWORD") or (getattr(settings.app_config, 'password', None) if hasattr(settings, 'app_config') and settings.app_config else None) or "admin123"
 
 class ParsingForm(BaseModel):
     company_name: str
@@ -86,6 +84,19 @@ async def read_root(request: Request):
         return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse("index.html", {"request": request, "error": None, "success": None})
 
+SUMMARY_FIELDS = [
+    ("search_query_name", "Название запроса"),
+    ("total_cards_found", "Карточек найдено"),
+    ("aggregated_rating", "Средний рейтинг"),
+    ("aggregated_reviews_count", "Всего отзывов"),
+    ("aggregated_positive_reviews", "Положительных отзывов (4-5⭐)"),
+    ("aggregated_negative_reviews", "Отрицательных отзывов (1-3⭐)"),
+    ("aggregated_answered_reviews_count", "Отвечено отзывов"),
+    ("aggregated_answered_reviews_percent", "Процент отзывов с ответами"),
+    ("aggregated_unanswered_reviews_count", "Не отвечено отзывов"),
+    ("aggregated_avg_response_time", "Среднее время ответа (дни)"),
+]
+
 def _generate_yandex_url(company_name: str, search_scope: str, location: str) -> str:
     encoded_company_name = urllib.parse.quote(company_name)
     if search_scope == "city" and location:
@@ -113,40 +124,45 @@ def _generate_gis_url(company_name: str, company_site: str, search_scope: str, l
 def _run_parser_task(parser_class, url: str, task_id: str, source: str):
     driver = None
     try:
-        update_task_status(task_id, "RUNNING", "Инициализация драйвера...")
+        update_task_status(task_id, "RUNNING", f"{source}: Инициализация драйвера...")
         driver = SeleniumDriver(settings=settings)
         driver.start()
-        
-        update_task_status(task_id, "RUNNING", f"Запуск парсера {source}...")
+
+        update_task_status(task_id, "RUNNING", f"{source}: Запуск парсера...")
         parser = parser_class(driver=driver, settings=settings)
-        
+
         def update_progress(msg: str):
-            update_task_status(task_id, "RUNNING", f"{source}: {msg}")
-        
+            progress_message = f"{source}: {msg}" if not msg.startswith(source) else msg
+            update_task_status(task_id, "RUNNING", progress_message)
+            logger.info(f"Task {task_id}: {progress_message}")
+            import sys
+            sys.stdout.flush()
+
         parser.set_progress_callback(update_progress)
-        
+
         result = parser.parse(url=url)
-        
-        update_task_status(task_id, "RUNNING", f"Парсинг {source} завершен")
+
+        update_task_status(task_id, "RUNNING", f"{source}: Парсинг завершен")
         return result, None
     except Exception as e:
         logger.error(f"Error in parser task {task_id} ({source}): {e}", exc_info=True)
+        update_task_status(task_id, "FAILED", f"{source}: Ошибка: {str(e)}", error=str(e))
         return None, str(e)
     finally:
         if driver:
             try:
                 driver.stop()
-            except:
-                pass
+            except Exception as stop_error:
+                logger.warning(f"Error stopping driver: {stop_error}")
 
 @app.post("/start_parsing")
 async def start_parsing(request: Request, form_data: ParsingForm = Depends(ParsingForm.as_form)):
     if not check_auth(request):
         return RedirectResponse(url="/login", status_code=302)
-    
+
     if not form_data.company_name or not form_data.company_site or not form_data.source or not form_data.email:
         return RedirectResponse(url="/?error=Missing+required+fields", status_code=302)
-    
+
     task_id = create_task(
         email=form_data.email,
         source_info={
@@ -157,18 +173,18 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
             'location': form_data.location
         }
     )
-    
+
     def run_parsing():
         try:
             if form_data.source == 'both':
                 update_task_status(task_id, "RUNNING", "Запуск парсинга обоих источников...")
-                
+
                 yandex_url = _generate_yandex_url(form_data.company_name, form_data.search_scope, form_data.location)
                 gis_url = _generate_gis_url(form_data.company_name, form_data.company_site, form_data.search_scope, form_data.location)
-                
+
                 yandex_result, yandex_error = _run_parser_task(YandexParser, yandex_url, task_id, "Yandex")
                 gis_result, gis_error = _run_parser_task(GisParser, gis_url, task_id, "2GIS")
-                
+
                 all_cards = []
                 if yandex_result:
                     cards = yandex_result.get('cards_data', [])
@@ -180,22 +196,22 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                     for card in cards:
                         card['source'] = '2gis'
                     all_cards.extend(cards)
-                
+
                 if all_cards:
                     writer = CSVWriter(settings=settings)
                     results_dir = settings.app_config.writer.output_dir
                     os.makedirs(results_dir, exist_ok=True)
                     output_path = os.path.join(results_dir, form_data.output_filename)
                     writer.set_file_path(output_path)
-                    
+
                     with writer:
                         for card in all_cards:
                             writer.write(card)
-                    
+
                     task = active_tasks[task_id]
                     task.result_file = form_data.output_filename
                     task.detailed_results = all_cards
-                
+
                 if yandex_error or gis_error:
                     update_task_status(task_id, "COMPLETED", f"Завершено с ошибками: Yandex={bool(yandex_error)}, 2GIS={bool(gis_error)}")
                 else:
@@ -203,7 +219,7 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
             elif form_data.source == 'yandex':
                 url = _generate_yandex_url(form_data.company_name, form_data.search_scope, form_data.location)
                 result, error = _run_parser_task(YandexParser, url, task_id, "Yandex")
-                
+
                 if error:
                     update_task_status(task_id, "FAILED", f"Ошибка: {error}", error=error)
                 elif result and result.get('cards_data'):
@@ -211,11 +227,11 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                     results_dir = settings.app_config.writer.output_dir
                     os.makedirs(results_dir, exist_ok=True)
                     writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
-                    
+
                     with writer:
                         for card in result['cards_data']:
                             writer.write(card)
-                    
+
                     task = active_tasks[task_id]
                     task.result_file = form_data.output_filename
                     task.detailed_results = result['cards_data']
@@ -225,7 +241,7 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
             elif form_data.source == '2gis':
                 url = _generate_gis_url(form_data.company_name, form_data.company_site, form_data.search_scope, form_data.location)
                 result, error = _run_parser_task(GisParser, url, task_id, "2GIS")
-                
+
                 if error:
                     update_task_status(task_id, "FAILED", f"Ошибка: {error}", error=error)
                 elif result and result.get('cards_data'):
@@ -233,11 +249,11 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                     results_dir = settings.app_config.writer.output_dir
                     os.makedirs(results_dir, exist_ok=True)
                     writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
-                    
+
                     with writer:
                         for card in result['cards_data']:
                             writer.write(card)
-                    
+
                     task = active_tasks[task_id]
                     task.result_file = form_data.output_filename
                     task.detailed_results = result['cards_data']
@@ -247,21 +263,21 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
         except Exception as e:
             logger.error(f"Error in parsing task {task_id}: {e}", exc_info=True)
             update_task_status(task_id, "FAILED", f"Критическая ошибка: {str(e)}", error=str(e))
-    
+
     thread = threading.Thread(target=run_parsing, daemon=True)
     thread.start()
-    
+
     return RedirectResponse(url=f"/tasks/{task_id}", status_code=302)
 
 @app.get("/tasks/{task_id}")
 async def get_task(request: Request, task_id: str):
     if not check_auth(request):
         return RedirectResponse(url="/login", status_code=302)
-    
+
     task = active_tasks.get(task_id)
     if not task:
-        return JSONResponse({"error": "Task not found"}, status_code=404)
-    
+        return templates.TemplateResponse("task_status.html", {"request": request, "task": None, "error": "Task not found"})
+
     task_dict = {
         "task_id": task.task_id,
         "status": task.status,
@@ -274,14 +290,45 @@ async def get_task(request: Request, task_id: str):
         "statistics": task.statistics,
         "detailed_results": task.detailed_results
     }
-    return templates.TemplateResponse("task_status.html", {"request": request, "task": task_dict})
+
+    cards = task.detailed_results if task.detailed_results else []
+    statistics = task.statistics if task.statistics else {}
+    output_dir = getattr(settings.writer, 'output_dir', './output')
+
+    return templates.TemplateResponse("task_status.html", {
+        "request": request,
+        "task": task_dict,
+        "statistics": statistics if (task.status == 'COMPLETED' or task.status == 'FAILED') else None,
+        "cards": cards if (task.status == 'COMPLETED' or task.status == 'FAILED') else None,
+        "summary_fields": SUMMARY_FIELDS,
+        "output_dir": output_dir
+    })
 
 @app.get("/tasks/{task_id}/status")
 async def get_task_status(task_id: str):
     task = active_tasks.get(task_id)
     if not task:
         return JSONResponse({"error": "Task not found"}, status_code=404)
-    
+
+    task_dict = {
+        "task_id": task.task_id,
+        "status": task.status,
+        "progress": task.progress,
+        "email": task.email,
+        "source_info": task.source_info,
+        "result_file": task.result_file,
+        "error": task.error,
+        "timestamp": str(task.timestamp),
+        "statistics": task.statistics
+    }
+    return JSONResponse(task_dict)
+
+@app.get("/api/task_status/{task_id}")
+async def get_task_status_api(task_id: str):
+    task = active_tasks.get(task_id)
+    if not task:
+        return JSONResponse({"error": "Task not found"}, status_code=404)
+
     task_dict = {
         "task_id": task.task_id,
         "status": task.status,
@@ -316,21 +363,21 @@ async def get_all_tasks():
 async def download_pdf_report(request: Request, task_id: str):
     if not check_auth(request):
         return RedirectResponse(url="/login", status_code=302)
-    
+
     task = active_tasks.get(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     if task.status != 'COMPLETED':
         raise HTTPException(status_code=400, detail="Task is not completed yet")
-    
+
     try:
         results_dir = settings.app_config.writer.output_dir
         os.makedirs(results_dir, exist_ok=True)
-        
+
         pdf_filename = f"report_{task_id}.pdf"
         pdf_path = os.path.join(results_dir, pdf_filename)
-        
+
         pdf_writer = PDFWriter(settings=settings)
         company_name = task.source_info.get('company_name', 'Unknown')
         company_site = task.source_info.get('company_site', '')
@@ -341,7 +388,7 @@ async def download_pdf_report(request: Request, task_id: str):
             company_name=company_name,
             company_site=company_site
         )
-        
+
         return FileResponse(
             pdf_path,
             media_type='application/pdf',

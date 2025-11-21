@@ -25,7 +25,7 @@ class PDFWriter:
         self.story = []
         self.styles = getSampleStyleSheet()
         self._setup_styles()
-    
+
     def _setup_styles(self):
         self.styles.add(ParagraphStyle(
             name='CustomTitle',
@@ -35,7 +35,7 @@ class PDFWriter:
             spaceAfter=30,
             alignment=TA_CENTER
         ))
-        
+
         self.styles.add(ParagraphStyle(
             name='CustomHeading2',
             parent=self.styles['Heading2'],
@@ -44,14 +44,14 @@ class PDFWriter:
             spaceAfter=12,
             spaceBefore=20
         ))
-        
+
         self.styles.add(ParagraphStyle(
             name='CustomBody',
             parent=self.styles['Normal'],
             fontSize=10,
             spaceAfter=6
         ))
-        
+
         self.styles.add(ParagraphStyle(
             name='CustomMeta',
             parent=self.styles['Normal'],
@@ -59,16 +59,16 @@ class PDFWriter:
             textColor=colors.HexColor('#757575'),
             spaceAfter=3
         ))
-    
+
     def set_file_path(self, file_path: str):
         self.file_path = file_path
-    
+
     def generate_report(self, output_path: str, aggregated_data: Dict[str, Any], 
                        detailed_cards: List[Dict[str, Any]], 
                        company_name: str, company_site: str) -> str:
         try:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            
+
             self.doc = SimpleDocTemplate(
                 output_path,
                 pagesize=A4,
@@ -77,35 +77,35 @@ class PDFWriter:
                 topMargin=2*cm,
                 bottomMargin=2*cm
             )
-            
+
             self.story = []
-            
+
             self.story.append(Paragraph(f"Отчет по компании: {company_name}", self.styles['CustomTitle']))
             self.story.append(Spacer(1, 0.5*cm))
-            
+
             current_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
             self.story.append(Paragraph(f"Дата создания: {current_time}", self.styles['CustomMeta']))
             if company_site:
                 self.story.append(Paragraph(f"Сайт: {company_site}", self.styles['CustomMeta']))
             self.story.append(Spacer(1, 0.5*cm))
-            
+
             if aggregated_data:
                 self._add_statistics_section(aggregated_data)
-            
+
             if detailed_cards:
                 self._add_cards_section(detailed_cards)
-            
+
             self.doc.build(self.story)
             logger.info(f"PDF report generated: {output_path}")
             return output_path
-            
+
         except Exception as e:
             logger.error(f"Error generating PDF report: {e}", exc_info=True)
             raise
-    
+
     def _add_statistics_section(self, stats: Dict[str, Any]):
         self.story.append(Paragraph("Общая статистика", self.styles['CustomHeading2']))
-        
+
         data = [
             ['Метрика', 'Значение'],
             ['Карточек найдено', str(stats.get('total_cards_found', 0))],
@@ -113,7 +113,7 @@ class PDFWriter:
             ['Всего отзывов', str(stats.get('aggregated_reviews_count', 0))],
             ['Отвечено отзывов', str(stats.get('aggregated_answered_reviews_count', 0))],
         ]
-        
+
         total_reviews = stats.get('aggregated_reviews_count', 0)
         answered_reviews = stats.get('aggregated_answered_reviews_count', 0)
         if total_reviews > 0:
@@ -121,16 +121,16 @@ class PDFWriter:
             data.append(['Процент отзывов с ответами', f"{percent:.2f}%"])
         else:
             data.append(['Процент отзывов с ответами', "0%"])
-        
+
         avg_time = stats.get('aggregated_avg_response_time', 0)
         if avg_time:
             data.append(['Среднее время ответа', f"{avg_time:.2f} дней"])
         else:
             data.append(['Среднее время ответа', "—"])
-        
+
         data.append(['Положительных отзывов (4-5⭐)', str(stats.get('aggregated_positive_reviews', 0))])
         data.append(['Отрицательных отзывов (1-3⭐)', str(stats.get('aggregated_negative_reviews', 0))])
-        
+
         table = Table(data, colWidths=[8*cm, 6*cm])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1976d2')),
@@ -143,39 +143,39 @@ class PDFWriter:
             ('GRID', (0, 0), (-1, -1), 1, colors.grey),
             ('FONTSIZE', (0, 1), (-1, -1), 10),
         ]))
-        
+
         self.story.append(table)
         self.story.append(Spacer(1, 0.5*cm))
-    
+
     def _add_cards_section(self, cards: List[Dict[str, Any]]):
         self.story.append(PageBreak())
         self.story.append(Paragraph("Детали по карточкам", self.styles['CustomHeading2']))
         self.story.append(Spacer(1, 0.3*cm))
-        
+
         for idx, card in enumerate(cards, 1):
             self.story.append(Paragraph(f"Карточка {idx}: {card.get('card_name', 'Без названия')}", self.styles['Heading3']))
-            
+
             card_data = [
                 ['Параметр', 'Значение'],
                 ['Адрес', card.get('card_address', 'Не указан')],
                 ['Рейтинг', str(card.get('card_rating', '—'))],
                 ['Количество отзывов', str(card.get('card_reviews_count', 0))],
             ]
-            
+
             if card.get('card_answered_reviews_count') is not None:
                 card_data.append(['Отвечено отзывов', str(card.get('card_answered_reviews_count', 0))])
                 card_data.append(['Не отвечено отзывов', str(card.get('card_unanswered_reviews_count', 0))])
-            
+
             if card.get('card_avg_response_time'):
                 card_data.append(['Среднее время ответа', f"{card.get('card_avg_response_time')} дней"])
-            
+
             card_data.append(['Положительных отзывов', str(card.get('card_reviews_positive', 0))])
             card_data.append(['Отрицательных отзывов', str(card.get('card_reviews_negative', 0))])
-            
+
             if card.get('source'):
                 source_name = "Яндекс.Карты" if card.get('source') == 'yandex' else "2GIS"
                 card_data.append(['Источник', source_name])
-            
+
             table = Table(card_data, colWidths=[6*cm, 8*cm])
             table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4CAF50')),
@@ -188,10 +188,10 @@ class PDFWriter:
                 ('GRID', (0, 0), (-1, -1), 1, colors.grey),
                 ('FONTSIZE', (0, 1), (-1, -1), 9),
             ]))
-            
+
             self.story.append(table)
             self.story.append(Spacer(1, 0.3*cm))
-            
+
             reviews = card.get('detailed_reviews', [])
             if reviews:
                 self.story.append(Paragraph("Отзывы:", self.styles['Heading4']))
@@ -205,15 +205,15 @@ class PDFWriter:
                         review_text += f"Дата: {review.get('review_date')}<br/>"
                     if review.get('review_text'):
                         review_text += f"Текст: {review.get('review_text')[:200]}{'...' if len(review.get('review_text', '')) > 200 else ''}"
-                    
+
                     self.story.append(Paragraph(review_text, self.styles['CustomBody']))
                     self.story.append(Spacer(1, 0.2*cm))
-                
+
                 if len(reviews) > 10:
                     self.story.append(Paragraph(f"... и еще {len(reviews) - 10} отзывов", self.styles['CustomMeta']))
-            
+
             self.story.append(Spacer(1, 0.5*cm))
-            
+
             if idx % 2 == 0 and idx < len(cards):
                 self.story.append(PageBreak())
 

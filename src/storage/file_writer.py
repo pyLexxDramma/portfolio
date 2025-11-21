@@ -11,22 +11,14 @@ class FileWriterOptions(BaseModel):
     format: str = "csv"
     output_dir: str = "./output"
 
-class FileWriter(BaseModel):
-    _options: FileWriterOptions = Field(alias='options', default_factory=FileWriterOptions)
-    _file_path: Optional[str] = None
-    _wrote_count: int = 0
-
-    def __init__(self, **data):
-        if 'options' in data:
-            data['_options'] = data.pop('options')
-        super().__init__(**data)
-
-    @property
-    def options(self) -> FileWriterOptions:
-        return self._options
+class FileWriter:
+    def __init__(self, options: FileWriterOptions = None):
+        self.options = options or FileWriterOptions()
+        self.file_path: Optional[str] = None
+        self.wrote_count: int = 0
 
     def set_file_path(self, file_path: str):
-        self._file_path = file_path
+        self.file_path = file_path
 
     def open(self):
         raise NotImplementedError("Subclasses must implement the open method.")
