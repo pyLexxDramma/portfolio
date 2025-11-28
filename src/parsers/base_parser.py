@@ -29,6 +29,9 @@ class BaseParser(abc.ABC):
 
         self._is_running = False
         self._progress_callback: Optional[Callable[[str], None]] = None
+        self._stop_check_callback: Optional[Callable[[], bool]] = None
+        self.test_mode: bool = False
+        self.test_max_cards: int = 7
 
     @property
     def driver(self) -> BaseDriver:
@@ -83,6 +86,19 @@ class BaseParser(abc.ABC):
 
     def set_progress_callback(self, callback: Callable[[str], None]) -> None:
         self._progress_callback = callback
+    
+    def set_stop_check_callback(self, callback: Callable[[], bool]) -> None:
+        """Устанавливает callback для проверки, остановлена ли задача"""
+        self._stop_check_callback = callback
+    
+    def _is_stopped(self) -> bool:
+        """Проверяет, остановлена ли задача"""
+        if self._stop_check_callback:
+            try:
+                return self._stop_check_callback()
+            except Exception as e:
+                logger.error(f"Error in stop check callback: {e}", exc_info=True)
+        return False
 
     def _update_progress(self, message: str) -> None:
         if self._progress_callback:
@@ -90,4 +106,5 @@ class BaseParser(abc.ABC):
                 self._progress_callback(message)
             except Exception as e:
                 logger.error(f"Error in progress callback: {e}", exc_info=True)
+
 

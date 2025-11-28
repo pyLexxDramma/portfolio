@@ -10,7 +10,8 @@ from fastapi import status as http_status
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+import re
 import secrets
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -19,7 +20,18 @@ from src.parsers.yandex_parser import YandexParser
 from src.parsers.gis_parser import GisParser
 from src.storage.csv_writer import CSVWriter
 from src.storage.pdf_writer import PDFWriter
-from src.utils.task_manager import TaskStatus, active_tasks, create_task, update_task_status
+from src.utils.task_manager import (
+    TaskStatus,
+    active_tasks,
+    create_task,
+    update_task_status,
+    pause_task,
+    resume_task,
+    stop_task,
+    is_task_paused,
+    is_task_stopped,
+    get_task,
+)
 from src.config.settings import Settings
 
 app = FastAPI()
@@ -35,7 +47,16 @@ logger = logging.getLogger(__name__)
 
 settings = Settings()
 
-SITE_PASSWORD = os.environ.get("SITE_PASSWORD") or (getattr(settings.app_config, 'password', None) if hasattr(settings, 'app_config') and settings.app_config else None) or "admin123"
+# Загружаем пароль: сначала из переменной окружения, потом из config.json, потом дефолтный
+SITE_PASSWORD = os.environ.get("SITE_PASSWORD")
+if not SITE_PASSWORD:
+    if hasattr(settings, 'app_config') and settings.app_config:
+        SITE_PASSWORD = getattr(settings.app_config, 'password', None)
+if not SITE_PASSWORD:
+    SITE_PASSWORD = "admin123"
+
+logger.info(f"Site password loaded: {'*' * len(SITE_PASSWORD) if SITE_PASSWORD else 'NOT SET'}")
+logger.info(f"Password source: {'ENV' if os.environ.get('SITE_PASSWORD') else 'CONFIG' if hasattr(settings, 'app_config') and getattr(settings.app_config, 'password', None) else 'DEFAULT'}")
 
 class ParsingForm(BaseModel):
     company_name: str
@@ -46,6 +67,8 @@ class ParsingForm(BaseModel):
     search_scope: str = "country"
     location: str = ""
     proxy_server: Optional[str] = ""
+    # Список городов (для режима "по стране"), упакованный в одну строку через ; или ,
+    cities: str = ""
 
     @classmethod
     async def as_form(cls, request: Request):
@@ -67,10 +90,18 @@ async def login_page(request: Request):
 
 @app.post("/login")
 async def login(request: Request, password: str = Form(...)):
-    if password == SITE_PASSWORD:
+    # Убираем пробелы в начале и конце пароля
+    password = password.strip()
+    expected_password = SITE_PASSWORD.strip() if SITE_PASSWORD else ""
+    
+    logger.debug(f"Login attempt: received password length={len(password)}, expected length={len(expected_password)}")
+    
+    if password == expected_password:
         request.session["authenticated"] = True
+        logger.info("User authenticated successfully")
         return RedirectResponse(url="/", status_code=302)
     else:
+        logger.warning(f"Failed login attempt: password mismatch")
         return templates.TemplateResponse("login.html", {"request": request, "error": "Неверный пароль"})
 
 @app.get("/logout")
@@ -78,11 +109,35 @@ async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=302)
 
+@app.get("/debug/password")
+async def debug_password(request: Request):
+    """Временный эндпоинт для отладки пароля (только для разработки)"""
+    if not check_auth(request):
+        return RedirectResponse(url="/login", status_code=302)
+    password_info = {
+        "password_length": len(SITE_PASSWORD) if SITE_PASSWORD else 0,
+        "password_source": "ENV" if os.environ.get('SITE_PASSWORD') else ("CONFIG" if hasattr(settings, 'app_config') and getattr(settings.app_config, 'password', None) else "DEFAULT"),
+        "password_set": bool(SITE_PASSWORD),
+        "config_password": getattr(settings.app_config, 'password', None) if hasattr(settings, 'app_config') else None
+    }
+    return JSONResponse(password_info)
+
 @app.get("/")
 async def read_root(request: Request):
     if not check_auth(request):
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse("index.html", {"request": request, "error": None, "success": None})
+    error = request.query_params.get("error")
+    success = request.query_params.get("success")
+    last_form = request.session.get("last_form") if request.session else None
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "error": error,
+            "success": success,
+            "last_form": last_form,
+        },
+    )
 
 SUMMARY_FIELDS = [
     ("search_query_name", "Название запроса"),
@@ -121,18 +176,59 @@ def _generate_gis_url(company_name: str, company_site: str, search_scope: str, l
     else:
         return f"https://2gis.ru/search/{encoded_company_name}?search_source=main&company_website={encoded_company_site}"
 
+
+def _parse_cities(cities_str: str) -> List[str]:
+    """
+    Преобразует строку с городами (через ; или ,) в список уникальных городов.
+    """
+    if not cities_str:
+        return []
+    parts = re.split(r"[;,]", cities_str)
+    cities: List[str] = []
+    seen = set()
+    for part in parts:
+        city = part.strip()
+        if city and city not in seen:
+            cities.append(city)
+            seen.add(city)
+    return cities
+
 def _run_parser_task(parser_class, url: str, task_id: str, source: str):
     driver = None
     try:
+        logger.info(f"Task {task_id} ({source}): Starting parser task for URL: {url}")
         update_task_status(task_id, "RUNNING", f"{source}: Инициализация драйвера...")
         driver = SeleniumDriver(settings=settings)
-        driver.start()
+        logger.info(f"Task {task_id} ({source}): Driver created, starting...")
+        try:
+            driver.start()
+            logger.info(f"Task {task_id} ({source}): Driver started successfully")
+        except Exception as driver_error:
+            logger.error(f"Task {task_id} ({source}): Failed to start driver: {driver_error}", exc_info=True)
+            update_task_status(task_id, "FAILED", f"{source}: Ошибка запуска драйвера: {str(driver_error)}", error=str(driver_error))
+            return None, str(driver_error)
 
         update_task_status(task_id, "RUNNING", f"{source}: Запуск парсера...")
+        logger.info(f"Task {task_id} ({source}): Creating parser instance...")
         parser = parser_class(driver=driver, settings=settings)
+        # Пробрасываем task_id в парсер, чтобы он мог реагировать на паузу/остановку
+        try:
+            setattr(parser, "task_id", task_id)
+        except Exception:
+            logger.debug("Could not set task_id attribute on parser instance")
 
         def update_progress(msg: str):
-            progress_message = f"{source}: {msg}" if not msg.startswith(source) else msg
+            # Формируем сообщение с префиксом источника (как в старом проекте)
+            if source == "Yandex":
+                progress_message = f"Yandex: {msg}" if not msg.startswith("Yandex:") else msg
+            elif source == "2GIS":
+                progress_message = f"2GIS: {msg}" if not msg.startswith("2GIS:") else msg
+            else:
+                progress_message = msg
+            
+            # Обновляем напрямую через active_tasks (как в старом проекте)
+            if task_id in active_tasks:
+                active_tasks[task_id].progress = progress_message
             update_task_status(task_id, "RUNNING", progress_message)
             logger.info(f"Task {task_id}: {progress_message}")
             import sys
@@ -140,9 +236,29 @@ def _run_parser_task(parser_class, url: str, task_id: str, source: str):
 
         parser.set_progress_callback(update_progress)
 
-        result = parser.parse(url=url)
+        logger.info(f"Task {task_id} ({source}): Starting parse for URL: {url}")
+        try:
+            result = parser.parse(url=url)
+        except Exception as parse_error:
+            logger.error(f"Task {task_id} ({source}): Parse failed: {parse_error}", exc_info=True)
+            update_task_status(task_id, "FAILED", f"{source}: Ошибка парсинга: {str(parse_error)}", error=str(parse_error))
+            return None, str(parse_error)
 
-        update_task_status(task_id, "RUNNING", f"{source}: Парсинг завершен")
+        logger.info(
+            f"Task {task_id} ({source}): Parse completed, result keys: {list(result.keys()) if result else 'None'}"
+        )
+
+        # Если задачу остановили пользователем, помечаем это явно в прогрессе
+        if is_task_stopped(task_id):
+            cards_count = len(result.get('cards_data', [])) if result and isinstance(result, dict) else 0
+            update_task_status(
+                task_id,
+                "COMPLETED",
+                f"{source}: Остановлено пользователем. Найдено карточек: {cards_count}",
+            )
+        else:
+            update_task_status(task_id, "RUNNING", f"{source}: Парсинг завершен")
+
         return result, None
     except Exception as e:
         logger.error(f"Error in parser task {task_id} ({source}): {e}", exc_info=True)
@@ -151,14 +267,23 @@ def _run_parser_task(parser_class, url: str, task_id: str, source: str):
     finally:
         if driver:
             try:
+                logger.info(f"Task {task_id} ({source}): Stopping driver...")
                 driver.stop()
+                logger.info(f"Task {task_id} ({source}): Driver stopped")
             except Exception as stop_error:
-                logger.warning(f"Error stopping driver: {stop_error}")
+                logger.warning(f"Error stopping driver for task {task_id} ({source}): {stop_error}")
 
 @app.post("/start_parsing")
 async def start_parsing(request: Request, form_data: ParsingForm = Depends(ParsingForm.as_form)):
     if not check_auth(request):
         return RedirectResponse(url="/login", status_code=302)
+
+    # Сохраняем последние введённые значения формы в сессии,
+    # чтобы при ошибке пользователь не заполнял её заново
+    try:
+        request.session["last_form"] = form_data.dict()
+    except Exception as e:
+        logger.warning(f"Could not store last_form in session: {e}")
 
     if not form_data.company_name or not form_data.company_site or not form_data.source or not form_data.email:
         return RedirectResponse(url="/?error=Missing+required+fields", status_code=302)
@@ -166,36 +291,228 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
     task_id = create_task(
         email=form_data.email,
         source_info={
-            'company_name': form_data.company_name,
-            'company_site': form_data.company_site,
-            'source': form_data.source,
-            'search_scope': form_data.search_scope,
-            'location': form_data.location
-        }
+            "company_name": form_data.company_name,
+            "company_site": form_data.company_site,
+            "source": form_data.source,
+            "search_scope": form_data.search_scope,
+            "location": form_data.location,
+            # Для режима "по стране" сохраняем список выбранных городов
+            "cities": getattr(form_data, "cities", ""),
+        },
     )
+    logger.info(f"Created task {task_id} for company: {form_data.company_name}, source: {form_data.source}")
 
     def run_parsing():
+        logger.info(f"Starting parsing thread for task {task_id}")
         try:
+            # Разбираем список городов, если включён режим "по стране" и переданы города
+            cities_list: List[str] = []
+            if form_data.search_scope == 'country' and getattr(form_data, "cities", ""):
+                cities_list = _parse_cities(form_data.cities)
+
             if form_data.source == 'both':
                 update_task_status(task_id, "RUNNING", "Запуск парсинга обоих источников...")
+                all_cards: List[Dict[str, Any]] = []
+                statistics: Dict[str, Any] = {}
+                yandex_error = None
+                gis_error = None
 
-                yandex_url = _generate_yandex_url(form_data.company_name, form_data.search_scope, form_data.location)
-                gis_url = _generate_gis_url(form_data.company_name, form_data.company_site, form_data.search_scope, form_data.location)
+                # Если передан список городов, запускаем парсинг поочерёдно по каждому городу
+                if cities_list:
+                    yandex_stats_list: List[Dict[str, Any]] = []
+                    gis_stats_list: List[Dict[str, Any]] = []
 
-                yandex_result, yandex_error = _run_parser_task(YandexParser, yandex_url, task_id, "Yandex")
-                gis_result, gis_error = _run_parser_task(GisParser, gis_url, task_id, "2GIS")
+                    for city in cities_list:
+                        # Yandex
+                        yandex_url = _generate_yandex_url(form_data.company_name, "city", city)
+                        update_task_status(task_id, "RUNNING", f"Yandex: Парсинг города {city}...")
+                        logger.info(f"Task {task_id}: Starting Yandex parser for city {city}...")
+                        yandex_result, yandex_error = _run_parser_task(YandexParser, yandex_url, task_id, "Yandex")
 
-                all_cards = []
-                if yandex_result:
-                    cards = yandex_result.get('cards_data', [])
-                    for card in cards:
-                        card['source'] = 'yandex'
-                    all_cards.extend(cards)
-                if gis_result:
-                    cards = gis_result.get('cards_data', [])
-                    for card in cards:
-                        card['source'] = '2gis'
-                    all_cards.extend(cards)
+                        if yandex_result:
+                            cards = yandex_result.get("cards_data", [])
+                            for card in cards:
+                                card["source"] = "yandex"
+                                card["city"] = city
+                            all_cards.extend(cards)
+
+                            if yandex_result.get("aggregated_info"):
+                                yandex_stats_list.append(yandex_result["aggregated_info"])
+
+                        # 2GIS
+                        gis_url = _generate_gis_url(
+                            form_data.company_name,
+                            form_data.company_site,
+                            "city",
+                            city,
+                        )
+                        update_task_status(task_id, "RUNNING", f"2GIS: Парсинг города {city}...")
+                        logger.info(f"Task {task_id}: Starting 2GIS parser for city {city}...")
+                        gis_result, gis_error = _run_parser_task(GisParser, gis_url, task_id, "2GIS")
+
+                        if gis_result:
+                            cards = gis_result.get("cards_data", [])
+                            for card in cards:
+                                card["source"] = "2gis"
+                                card["city"] = city
+                            all_cards.extend(cards)
+
+                            if gis_result.get("aggregated_info"):
+                                gis_stats_list.append(gis_result["aggregated_info"])
+
+                    # Формируем агрегированную статистику по каждому источнику на основе списка городов
+                    def _combine_stats(stats_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+                        combined = {
+                            "search_query_name": form_data.company_name,
+                            "total_cards_found": 0,
+                            "aggregated_rating": 0.0,
+                            "aggregated_reviews_count": 0,
+                            "aggregated_positive_reviews": 0,
+                            "aggregated_negative_reviews": 0,
+                            "aggregated_answered_reviews_count": 0,
+                            "aggregated_unanswered_reviews_count": 0,
+                            "aggregated_avg_response_time": 0.0,
+                            "aggregated_answered_reviews_percent": 0.0,
+                        }
+                        total_rating_sum = 0.0
+                        total_rating_weight = 0
+                        total_response_time_sum = 0.0
+                        total_response_time_weight = 0
+
+                        for s in stats_list:
+                            combined["total_cards_found"] += s.get("total_cards_found", 0) or 0
+                            reviews_cnt = s.get("aggregated_reviews_count", 0) or 0
+                            if reviews_cnt > 0:
+                                total_rating_sum += (s.get("aggregated_rating", 0.0) or 0.0) * reviews_cnt
+                                total_rating_weight += reviews_cnt
+
+                            combined["aggregated_reviews_count"] += reviews_cnt
+                            combined["aggregated_positive_reviews"] += s.get("aggregated_positive_reviews", 0) or 0
+                            combined["aggregated_negative_reviews"] += s.get("aggregated_negative_reviews", 0) or 0
+                            answered = s.get("aggregated_answered_reviews_count", 0) or 0
+                            unanswered = s.get("aggregated_unanswered_reviews_count", 0) or 0
+                            combined["aggregated_answered_reviews_count"] += answered
+                            combined["aggregated_unanswered_reviews_count"] += unanswered
+
+                            resp_time = s.get("aggregated_avg_response_time", 0.0) or 0.0
+                            if resp_time > 0 and answered > 0:
+                                total_response_time_sum += resp_time * answered
+                                total_response_time_weight += answered
+
+                        if total_rating_weight > 0:
+                            combined["aggregated_rating"] = round(total_rating_sum / total_rating_weight, 2)
+
+                        if combined["aggregated_reviews_count"] > 0:
+                            combined["aggregated_answered_reviews_percent"] = round(
+                                (combined["aggregated_answered_reviews_count"] / combined["aggregated_reviews_count"]) * 100,
+                                2,
+                            )
+
+                        if total_response_time_weight > 0:
+                            combined["aggregated_avg_response_time"] = round(
+                                total_response_time_sum / total_response_time_weight, 2
+                            )
+
+                        return combined
+
+                    if yandex_stats_list:
+                        statistics["yandex"] = _combine_stats(yandex_stats_list)
+                    if gis_stats_list:
+                        statistics["2gis"] = _combine_stats(gis_stats_list)
+
+                else:
+                    # Старое поведение: один общий поиск по стране или городу
+                    yandex_url = _generate_yandex_url(
+                        form_data.company_name, form_data.search_scope, form_data.location
+                    )
+                    gis_url = _generate_gis_url(
+                        form_data.company_name,
+                        form_data.company_site,
+                        form_data.search_scope,
+                        form_data.location,
+                    )
+
+                    update_task_status(task_id, "RUNNING", "Запуск парсера Яндекс...")
+                    logger.info(
+                        f"Task {task_id}: Starting Yandex parser first (sequential execution)..."
+                    )
+                    yandex_result, yandex_error = _run_parser_task(
+                        YandexParser, yandex_url, task_id, "Yandex"
+                    )
+
+                    update_task_status(task_id, "RUNNING", "Запуск парсера 2GIS...")
+                    logger.info(
+                        f"Task {task_id}: Starting 2GIS parser after Yandex (sequential execution)..."
+                    )
+                    gis_result, gis_error = _run_parser_task(
+                        GisParser, gis_url, task_id, "2GIS"
+                    )
+
+                    # Собираем детальные карточки по обоим источникам
+                    if yandex_result:
+                        cards = yandex_result.get("cards_data", [])
+                        for card in cards:
+                            card["source"] = "yandex"
+                        all_cards.extend(cards)
+
+                        if yandex_result.get("aggregated_info"):
+                            statistics["yandex"] = yandex_result["aggregated_info"]
+
+                    if gis_result:
+                        cards = gis_result.get("cards_data", [])
+                        for card in cards:
+                            card["source"] = "2gis"
+                        all_cards.extend(cards)
+
+                        if gis_result.get("aggregated_info"):
+                            statistics["2gis"] = gis_result["aggregated_info"]
+
+                # Формируем объединённую статистику по обоим источникам (для PDF и при необходимости)
+                if statistics:
+                    combined: Dict[str, Any] = {
+                        'search_query_name': form_data.company_name,
+                        'total_cards_found': 0,
+                        'aggregated_rating': 0.0,
+                        'aggregated_reviews_count': 0,
+                        'aggregated_positive_reviews': 0,
+                        'aggregated_negative_reviews': 0,
+                        'aggregated_answered_reviews_count': 0,
+                        'aggregated_unanswered_reviews_count': 0,
+                        'aggregated_avg_response_time': 0.0,
+                        'aggregated_answered_reviews_percent': 0.0,
+                    }
+
+                    total_rating_sum = 0.0
+                    total_rating_weight = 0
+
+                    for src_key in ['yandex', '2gis']:
+                        src_stats = statistics.get(src_key)
+                        if not src_stats:
+                            continue
+
+                        combined['total_cards_found'] += src_stats.get('total_cards_found', 0) or 0
+
+                        reviews_cnt = src_stats.get('aggregated_reviews_count', 0) or 0
+                        if reviews_cnt > 0:
+                            total_rating_sum += (src_stats.get('aggregated_rating', 0.0) or 0.0) * reviews_cnt
+                            total_rating_weight += reviews_cnt
+
+                        combined['aggregated_reviews_count'] += reviews_cnt
+                        combined['aggregated_positive_reviews'] += src_stats.get('aggregated_positive_reviews', 0) or 0
+                        combined['aggregated_negative_reviews'] += src_stats.get('aggregated_negative_reviews', 0) or 0
+                        combined['aggregated_answered_reviews_count'] += src_stats.get('aggregated_answered_reviews_count', 0) or 0
+                        combined['aggregated_unanswered_reviews_count'] += src_stats.get('aggregated_unanswered_reviews_count', 0) or 0
+
+                    if total_rating_weight > 0:
+                        combined['aggregated_rating'] = round(total_rating_sum / total_rating_weight, 2)
+
+                    if combined['aggregated_reviews_count'] > 0:
+                        combined['aggregated_answered_reviews_percent'] = round(
+                            (combined['aggregated_answered_reviews_count'] / combined['aggregated_reviews_count']) * 100,
+                            2
+                        )
+
+                    statistics['combined'] = combined
 
                 if all_cards:
                     writer = CSVWriter(settings=settings)
@@ -211,98 +528,380 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                     task = active_tasks[task_id]
                     task.result_file = form_data.output_filename
                     task.detailed_results = all_cards
+                    task.statistics = statistics
 
                 if yandex_error or gis_error:
                     update_task_status(task_id, "COMPLETED", f"Завершено с ошибками: Yandex={bool(yandex_error)}, 2GIS={bool(gis_error)}")
                 else:
                     update_task_status(task_id, "COMPLETED", f"Парсинг завершен. Найдено карточек: {len(all_cards)}")
             elif form_data.source == 'yandex':
-                url = _generate_yandex_url(form_data.company_name, form_data.search_scope, form_data.location)
-                result, error = _run_parser_task(YandexParser, url, task_id, "Yandex")
+                all_cards: List[Dict[str, Any]] = []
+                stats: Dict[str, Any] = {}
 
-                if error:
-                    update_task_status(task_id, "FAILED", f"Ошибка: {error}", error=error)
-                elif result and result.get('cards_data'):
-                    writer = CSVWriter(settings=settings)
-                    results_dir = settings.app_config.writer.output_dir
-                    os.makedirs(results_dir, exist_ok=True)
-                    writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
+                if cities_list:
+                    # Парсинг поочерёдно по каждому городу
+                    yandex_stats_list: List[Dict[str, Any]] = []
+                    error: Optional[str] = None
 
-                    with writer:
-                        for card in result['cards_data']:
-                            writer.write(card)
+                    for city in cities_list:
+                        url = _generate_yandex_url(form_data.company_name, "city", city)
+                        update_task_status(task_id, "RUNNING", f"Yandex: Парсинг города {city}...")
+                        logger.info(f"Task {task_id}: Starting Yandex parser for city {city} (single source)...")
+                        result, error = _run_parser_task(YandexParser, url, task_id, "Yandex")
 
-                    task = active_tasks[task_id]
-                    task.result_file = form_data.output_filename
-                    task.detailed_results = result['cards_data']
-                    update_task_status(task_id, "COMPLETED", f"Парсинг завершен. Найдено карточек: {len(result['cards_data'])}")
+                        if result and result.get("cards_data"):
+                            for card in result["cards_data"]:
+                                card["city"] = city
+                            all_cards.extend(result["cards_data"])
+
+                        if result and result.get("aggregated_info"):
+                            yandex_stats_list.append(result["aggregated_info"])
+
+                    if yandex_stats_list:
+                        # Используем тот же помощник, что и выше, для объединения статистики
+                        def _combine_stats_single(stats_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+                            combined = {
+                                "search_query_name": form_data.company_name,
+                                "total_cards_found": 0,
+                                "aggregated_rating": 0.0,
+                                "aggregated_reviews_count": 0,
+                                "aggregated_positive_reviews": 0,
+                                "aggregated_negative_reviews": 0,
+                                "aggregated_answered_reviews_count": 0,
+                                "aggregated_unanswered_reviews_count": 0,
+                                "aggregated_avg_response_time": 0.0,
+                                "aggregated_answered_reviews_percent": 0.0,
+                            }
+                            total_rating_sum = 0.0
+                            total_rating_weight = 0
+                            total_response_time_sum = 0.0
+                            total_response_time_weight = 0
+
+                            for s in stats_list:
+                                combined["total_cards_found"] += s.get("total_cards_found", 0) or 0
+                                reviews_cnt = s.get("aggregated_reviews_count", 0) or 0
+                                if reviews_cnt > 0:
+                                    total_rating_sum += (s.get("aggregated_rating", 0.0) or 0.0) * reviews_cnt
+                                    total_rating_weight += reviews_cnt
+
+                                combined["aggregated_reviews_count"] += reviews_cnt
+                                combined["aggregated_positive_reviews"] += s.get("aggregated_positive_reviews", 0) or 0
+                                combined["aggregated_negative_reviews"] += s.get("aggregated_negative_reviews", 0) or 0
+                                answered = s.get("aggregated_answered_reviews_count", 0) or 0
+                                unanswered = s.get("aggregated_unanswered_reviews_count", 0) or 0
+                                combined["aggregated_answered_reviews_count"] += answered
+                                combined["aggregated_unanswered_reviews_count"] += unanswered
+
+                                resp_time = s.get("aggregated_avg_response_time", 0.0) or 0.0
+                                if resp_time > 0 and answered > 0:
+                                    total_response_time_sum += resp_time * answered
+                                    total_response_time_weight += answered
+
+                            if total_rating_weight > 0:
+                                combined["aggregated_rating"] = round(total_rating_sum / total_rating_weight, 2)
+
+                            if combined["aggregated_reviews_count"] > 0:
+                                combined["aggregated_answered_reviews_percent"] = round(
+                                    (combined["aggregated_answered_reviews_count"] / combined["aggregated_reviews_count"]) * 100,
+                                    2,
+                                )
+
+                            if total_response_time_weight > 0:
+                                combined["aggregated_avg_response_time"] = round(
+                                    total_response_time_sum / total_response_time_weight, 2
+                                )
+
+                            return combined
+
+                        stats["yandex"] = _combine_stats_single(yandex_stats_list)
+                        stats["combined"] = stats["yandex"]
+
+                    if all_cards:
+                        writer = CSVWriter(settings=settings)
+                        results_dir = settings.app_config.writer.output_dir
+                        os.makedirs(results_dir, exist_ok=True)
+                        writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
+
+                        with writer:
+                            for card in all_cards:
+                                writer.write(card)
+
+                        task = active_tasks[task_id]
+                        task.result_file = form_data.output_filename
+                        task.detailed_results = all_cards
+                        task.statistics = stats
+
+                        update_task_status(
+                            task_id,
+                            "COMPLETED",
+                            f"Парсинг завершен. Найдено карточек: {len(all_cards)}",
+                        )
+                    else:
+                        update_task_status(
+                            task_id, "COMPLETED", "Парсинг завершен. Карточки не найдены"
+                        )
                 else:
-                    update_task_status(task_id, "COMPLETED", "Парсинг завершен. Карточки не найдены")
+                    # Старое поведение для одного города / общего поиска
+                    url = _generate_yandex_url(
+                        form_data.company_name, form_data.search_scope, form_data.location
+                    )
+                    result, error = _run_parser_task(YandexParser, url, task_id, "Yandex")
+
+                    if error:
+                        update_task_status(task_id, "FAILED", f"Ошибка: {error}", error=error)
+                    elif result and result.get("cards_data"):
+                        writer = CSVWriter(settings=settings)
+                        results_dir = settings.app_config.writer.output_dir
+                        os.makedirs(results_dir, exist_ok=True)
+                        writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
+
+                        with writer:
+                            for card in result["cards_data"]:
+                                writer.write(card)
+
+                        task = active_tasks[task_id]
+                        task.result_file = form_data.output_filename
+                        task.detailed_results = result["cards_data"]
+
+                        # Сохраняем агрегированную информацию, чтобы она отображалась в веб-отчёте и PDF
+                        stats = {}
+                        if result.get("aggregated_info"):
+                            stats["yandex"] = result["aggregated_info"]
+                            stats["combined"] = result["aggregated_info"]
+                        task.statistics = stats
+
+                        update_task_status(
+                            task_id,
+                            "COMPLETED",
+                            f"Парсинг завершен. Найдено карточек: {len(result['cards_data'])}",
+                        )
+                    else:
+                        update_task_status(
+                            task_id, "COMPLETED", "Парсинг завершен. Карточки не найдены"
+                        )
             elif form_data.source == '2gis':
-                url = _generate_gis_url(form_data.company_name, form_data.company_site, form_data.search_scope, form_data.location)
-                result, error = _run_parser_task(GisParser, url, task_id, "2GIS")
+                all_cards: List[Dict[str, Any]] = []
+                stats: Dict[str, Any] = {}
 
-                if error:
-                    update_task_status(task_id, "FAILED", f"Ошибка: {error}", error=error)
-                elif result and result.get('cards_data'):
-                    writer = CSVWriter(settings=settings)
-                    results_dir = settings.app_config.writer.output_dir
-                    os.makedirs(results_dir, exist_ok=True)
-                    writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
+                if cities_list:
+                    gis_stats_list: List[Dict[str, Any]] = []
+                    error: Optional[str] = None
 
-                    with writer:
-                        for card in result['cards_data']:
-                            writer.write(card)
+                    for city in cities_list:
+                        url = _generate_gis_url(
+                            form_data.company_name,
+                            form_data.company_site,
+                            "city",
+                            city,
+                        )
+                        update_task_status(task_id, "RUNNING", f"2GIS: Парсинг города {city}...")
+                        logger.info(f"Task {task_id}: Starting 2GIS parser for city {city} (single source)...")
+                        result, error = _run_parser_task(GisParser, url, task_id, "2GIS")
 
-                    task = active_tasks[task_id]
-                    task.result_file = form_data.output_filename
-                    task.detailed_results = result['cards_data']
-                    update_task_status(task_id, "COMPLETED", f"Парсинг завершен. Найдено карточек: {len(result['cards_data'])}")
+                        if result and result.get("cards_data"):
+                            for card in result["cards_data"]:
+                                card["city"] = city
+                            all_cards.extend(result["cards_data"])
+
+                        if result and result.get("aggregated_info"):
+                            gis_stats_list.append(result["aggregated_info"])
+
+                    if gis_stats_list:
+                        def _combine_stats_single_gis(stats_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+                            combined = {
+                                "search_query_name": form_data.company_name,
+                                "total_cards_found": 0,
+                                "aggregated_rating": 0.0,
+                                "aggregated_reviews_count": 0,
+                                "aggregated_positive_reviews": 0,
+                                "aggregated_negative_reviews": 0,
+                                "aggregated_answered_reviews_count": 0,
+                                "aggregated_unanswered_reviews_count": 0,
+                                "aggregated_avg_response_time": 0.0,
+                                "aggregated_answered_reviews_percent": 0.0,
+                            }
+                            total_rating_sum = 0.0
+                            total_rating_weight = 0
+                            total_response_time_sum = 0.0
+                            total_response_time_weight = 0
+
+                            for s in stats_list:
+                                combined["total_cards_found"] += s.get("total_cards_found", 0) or 0
+                                reviews_cnt = s.get("aggregated_reviews_count", 0) or 0
+                                if reviews_cnt > 0:
+                                    total_rating_sum += (s.get("aggregated_rating", 0.0) or 0.0) * reviews_cnt
+                                    total_rating_weight += reviews_cnt
+
+                                combined["aggregated_reviews_count"] += reviews_cnt
+                                combined["aggregated_positive_reviews"] += s.get("aggregated_positive_reviews", 0) or 0
+                                combined["aggregated_negative_reviews"] += s.get("aggregated_negative_reviews", 0) or 0
+                                answered = s.get("aggregated_answered_reviews_count", 0) or 0
+                                unanswered = s.get("aggregated_unanswered_reviews_count", 0) or 0
+                                combined["aggregated_answered_reviews_count"] += answered
+                                combined["aggregated_unanswered_reviews_count"] += unanswered
+
+                                resp_time = s.get("aggregated_avg_response_time", 0.0) or 0.0
+                                if resp_time > 0 and answered > 0:
+                                    total_response_time_sum += resp_time * answered
+                                    total_response_time_weight += answered
+
+                            if total_rating_weight > 0:
+                                combined["aggregated_rating"] = round(total_rating_sum / total_rating_weight, 2)
+
+                            if combined["aggregated_reviews_count"] > 0:
+                                combined["aggregated_answered_reviews_percent"] = round(
+                                    (combined["aggregated_answered_reviews_count"] / combined["aggregated_reviews_count"]) * 100,
+                                    2,
+                                )
+
+                            if total_response_time_weight > 0:
+                                combined["aggregated_avg_response_time"] = round(
+                                    total_response_time_sum / total_response_time_weight, 2
+                                )
+
+                            return combined
+
+                        stats["2gis"] = _combine_stats_single_gis(gis_stats_list)
+                        stats["combined"] = stats["2gis"]
+
+                    if all_cards:
+                        writer = CSVWriter(settings=settings)
+                        results_dir = settings.app_config.writer.output_dir
+                        os.makedirs(results_dir, exist_ok=True)
+                        writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
+
+                        with writer:
+                            for card in all_cards:
+                                writer.write(card)
+
+                        task = active_tasks[task_id]
+                        task.result_file = form_data.output_filename
+                        task.detailed_results = all_cards
+                        task.statistics = stats
+
+                        update_task_status(
+                            task_id,
+                            "COMPLETED",
+                            f"Парсинг завершен. Найдено карточек: {len(all_cards)}",
+                        )
+                    else:
+                        update_task_status(
+                            task_id, "COMPLETED", "Парсинг завершен. Карточки не найдены"
+                        )
                 else:
-                    update_task_status(task_id, "COMPLETED", "Парсинг завершен. Карточки не найдены")
+                    url = _generate_gis_url(
+                        form_data.company_name,
+                        form_data.company_site,
+                        form_data.search_scope,
+                        form_data.location,
+                    )
+                    result, error = _run_parser_task(GisParser, url, task_id, "2GIS")
+
+                    if error:
+                        update_task_status(task_id, "FAILED", f"Ошибка: {error}", error=error)
+                    elif result and result.get("cards_data"):
+                        writer = CSVWriter(settings=settings)
+                        results_dir = settings.app_config.writer.output_dir
+                        os.makedirs(results_dir, exist_ok=True)
+                        writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
+
+                        with writer:
+                            for card in result["cards_data"]:
+                                writer.write(card)
+
+                        task = active_tasks[task_id]
+                        task.result_file = form_data.output_filename
+                        task.detailed_results = result["cards_data"]
+
+                        stats = {}
+                        if result.get("aggregated_info"):
+                            stats["2gis"] = result["aggregated_info"]
+                            stats["combined"] = result["aggregated_info"]
+                        task.statistics = stats
+
+                        update_task_status(
+                            task_id,
+                            "COMPLETED",
+                            f"Парсинг завершен. Найдено карточек: {len(result['cards_data'])}",
+                        )
+                    else:
+                        update_task_status(
+                            task_id, "COMPLETED", "Парсинг завершен. Карточки не найдены"
+                        )
         except Exception as e:
             logger.error(f"Error in parsing task {task_id}: {e}", exc_info=True)
             update_task_status(task_id, "FAILED", f"Критическая ошибка: {str(e)}", error=str(e))
+        finally:
+            logger.info(f"Parsing thread finished for task {task_id}")
 
     thread = threading.Thread(target=run_parsing, daemon=True)
     thread.start()
+    logger.info(f"Started parsing thread for task {task_id}")
 
     return RedirectResponse(url=f"/tasks/{task_id}", status_code=302)
 
 @app.get("/tasks/{task_id}")
 async def get_task(request: Request, task_id: str):
-    if not check_auth(request):
-        return RedirectResponse(url="/login", status_code=302)
+    try:
+        if not check_auth(request):
+            return RedirectResponse(url="/login", status_code=302)
 
-    task = active_tasks.get(task_id)
-    if not task:
-        return templates.TemplateResponse("task_status.html", {"request": request, "task": None, "error": "Task not found"})
+        task = active_tasks.get(task_id)
+        if not task:
+            return templates.TemplateResponse("task_status.html", {"request": request, "task": None, "error": "Task not found"})
 
-    task_dict = {
-        "task_id": task.task_id,
-        "status": task.status,
-        "progress": task.progress,
-        "email": task.email,
-        "source_info": task.source_info,
-        "result_file": task.result_file,
-        "error": task.error,
-        "timestamp": str(task.timestamp),
-        "statistics": task.statistics,
-        "detailed_results": task.detailed_results
-    }
+        # Флаг показа «проблемных карточек» и карточек без ответов
+        show_problem_param = request.query_params.get("show_problem_cards", "").lower()
+        show_problem_cards = show_problem_param in ("1", "true", "on", "yes")
 
-    cards = task.detailed_results if task.detailed_results else []
-    statistics = task.statistics if task.statistics else {}
-    output_dir = getattr(settings.writer, 'output_dir', './output')
+        task_dict = {
+            "task_id": task.task_id,
+            "status": task.status,
+            "progress": task.progress or "",
+            "email": task.email or "",
+            "source_info": task.source_info or {},
+            "result_file": task.result_file or "",
+            "error": task.error or "",
+            # Передаём реальные datetime-объекты, чтобы шаблон мог использовать strftime
+            "timestamp": task.timestamp if hasattr(task, 'timestamp') else None,
+            "start_time": task.start_time if hasattr(task, 'start_time') else None,
+            "end_time": task.end_time if hasattr(task, 'end_time') else None,
+            "total_paused_duration": getattr(task, 'total_paused_duration', 0.0),
+            "statistics": task.statistics if hasattr(task, 'statistics') else {},
+            "detailed_results": task.detailed_results if hasattr(task, 'detailed_results') else []
+        }
 
-    return templates.TemplateResponse("task_status.html", {
-        "request": request,
-        "task": task_dict,
-        "statistics": statistics if (task.status == 'COMPLETED' or task.status == 'FAILED') else None,
-        "cards": cards if (task.status == 'COMPLETED' or task.status == 'FAILED') else None,
-        "summary_fields": SUMMARY_FIELDS,
-        "output_dir": output_dir
-    })
+        cards = task.detailed_results if hasattr(task, 'detailed_results') and task.detailed_results else []
+        statistics = task.statistics if hasattr(task, 'statistics') and task.statistics else {}
+        output_dir = getattr(settings.app_config.writer, 'output_dir', './output') if hasattr(settings, 'app_config') and hasattr(settings.app_config, 'writer') else './output'
+
+        return templates.TemplateResponse(
+            "task_status.html",
+            {
+                "request": request,
+                "task": task_dict,
+                "statistics": statistics
+                if (task.status == "COMPLETED" or task.status == "FAILED")
+                else None,
+                "cards": cards
+                if (task.status == "COMPLETED" or task.status == "FAILED")
+                else None,
+                "summary_fields": SUMMARY_FIELDS,
+                "output_dir": output_dir,
+                "show_problem_cards": show_problem_cards,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error in get_task endpoint for task {task_id}: {e}", exc_info=True)
+        return templates.TemplateResponse(
+            "task_status.html",
+            {
+                "request": request,
+                "task": None,
+                "error": f"Internal Server Error: {str(e)}",
+                "show_problem_cards": False,
+            },
+        )
 
 @app.get("/tasks/{task_id}/status")
 async def get_task_status(task_id: str):
@@ -381,9 +980,27 @@ async def download_pdf_report(request: Request, task_id: str):
         pdf_writer = PDFWriter(settings=settings)
         company_name = task.source_info.get('company_name', 'Unknown')
         company_site = task.source_info.get('company_site', '')
+
+        # Для PDF берём "плоскую" статистику:
+        # 1) combined, если есть (оба источника)
+        # 2) иначе yandex или 2gis, если есть только один
+        # 3) иначе — то, что лежит в task.statistics как есть
+        stats = task.statistics or {}
+        if isinstance(stats, dict) and ('yandex' in stats or '2gis' in stats or 'combined' in stats):
+            if stats.get('combined'):
+                pdf_stats = stats['combined']
+            elif stats.get('yandex') and not stats.get('2gis'):
+                pdf_stats = stats['yandex']
+            elif stats.get('2gis') and not stats.get('yandex'):
+                pdf_stats = stats['2gis']
+            else:
+                pdf_stats = stats.get('combined') or {}
+        else:
+            pdf_stats = stats
+
         pdf_writer.generate_report(
             output_path=pdf_path,
-            aggregated_data=task.statistics or {},
+            aggregated_data=pdf_stats or {},
             detailed_cards=task.detailed_results or [],
             company_name=company_name,
             company_site=company_site
@@ -398,4 +1015,39 @@ async def download_pdf_report(request: Request, task_id: str):
     except Exception as e:
         logger.error(f"Error generating PDF for task {task_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+
+
+@app.post("/api/tasks/{task_id}/pause")
+async def api_pause_task(request: Request, task_id: str):
+    if not check_auth(request):
+        return JSONResponse({"success": False, "error": "Unauthorized"}, status_code=401)
+
+    success = pause_task(task_id)
+    if success:
+        return JSONResponse({"success": True})
+    return JSONResponse({"success": False, "error": "Cannot pause this task"}, status_code=400)
+
+
+@app.post("/api/tasks/{task_id}/resume")
+async def api_resume_task(request: Request, task_id: str):
+    if not check_auth(request):
+        return JSONResponse({"success": False, "error": "Unauthorized"}, status_code=401)
+
+    success = resume_task(task_id)
+    if success:
+        return JSONResponse({"success": True})
+    return JSONResponse({"success": False, "error": "Cannot resume this task"}, status_code=400)
+
+
+@app.post("/api/tasks/{task_id}/stop")
+async def api_stop_task(request: Request, task_id: str):
+    if not check_auth(request):
+        return JSONResponse({"success": False, "error": "Unauthorized"}, status_code=401)
+
+    success = stop_task(task_id)
+    if success:
+        # Флаг остановки выставлен; парсер завершит работу и сохранит частичный результат,
+        # а фронт через polling дождётся статуса COMPLETED/FAILED и перезагрузит страницу.
+        return JSONResponse({"success": True})
+    return JSONResponse({"success": False, "error": "Cannot stop this task"}, status_code=400)
 

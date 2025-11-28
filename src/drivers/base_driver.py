@@ -49,6 +49,10 @@ class BaseDriver(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def get_current_url(self) -> str:
+        pass
+
+    @abc.abstractmethod
     def get_page_source(self) -> str:
         pass
 

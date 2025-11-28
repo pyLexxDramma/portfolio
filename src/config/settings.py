@@ -168,7 +168,12 @@ class Settings(BaseModel):
                         for key, value in parser_data.items():
                             if hasattr(self.parser, key):
                                 setattr(self.parser, key, value)
-                    if 'chrome' in config_data.get('app', {}):
+                    if 'chrome' in config_data:
+                        chrome_data = config_data['chrome']
+                        for key, value in chrome_data.items():
+                            if hasattr(self.chrome, key):
+                                setattr(self.chrome, key, value)
+                    elif 'chrome' in config_data.get('app', {}):
                         chrome_data = config_data['app'].get('chrome', {})
                         for key, value in chrome_data.items():
                             if hasattr(self.chrome, key):
@@ -215,17 +220,32 @@ try:
     class FlushingStreamHandler(logging.StreamHandler):
         def emit(self, record):
             super().emit(record)
+            # Принудительно сбрасываем буфер после каждого сообщения
             if hasattr(self.stream, 'flush'):
                 self.stream.flush()
+            # Также сбрасываем stderr на случай, если что-то идет туда
+            if hasattr(sys.stderr, 'flush'):
+                sys.stderr.flush()
+    
     console_handler = FlushingStreamHandler(sys.stdout)
     console_handler.setLevel(log_level_int)
     console_formatter = logging.Formatter(log_format, datefmt=date_format)
     console_handler.setFormatter(console_formatter)
+    
+    # Настраиваем буферизацию для немедленного вывода
     if hasattr(console_handler.stream, 'reconfigure'):
         try:
-            console_handler.stream.reconfigure(line_buffering=True)
+            console_handler.stream.reconfigure(line_buffering=True, encoding='utf-8')
         except:
             pass
+    
+    # Убеждаемся, что stderr тоже не буферизуется
+    if hasattr(sys.stderr, 'reconfigure'):
+        try:
+            sys.stderr.reconfigure(line_buffering=True, encoding='utf-8')
+        except:
+            pass
+    
     root_logger.addHandler(console_handler)
     file_handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5, encoding='utf-8')
     file_handler.setLevel(log_level_int)

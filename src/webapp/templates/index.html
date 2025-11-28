@@ -20,40 +20,293 @@
     <div class="message success">{{ success }}</div>
     {% endif %}
 
-    <form action="/start_parsing" method="post">
+    <form action="/start_parsing" method="post" id="parse_form">
         <div class="form-group">
             <label for="company_name">Введите название компании:</label>
-            <input type="text" id="company_name" name="company_name" placeholder="Например: ООО Ромашка" required>
+            <input type="text" id="company_name" name="company_name" placeholder="Например: ООО Ромашка" required
+                   value="{{ last_form.company_name if last_form and last_form.company_name else '' }}">
         </div>
 
         <div class="form-group">
             <label for="company_site">Введите сайт компании:</label>
-            <input type="url" id="company_site" name="company_site" placeholder="Например: romashka.ru" required>
+            <input type="url" id="company_site" name="company_site" placeholder="Например: romashka.ru" required
+                   value="{{ last_form.company_site if last_form and last_form.company_site else '' }}">
         </div>
 
         <div class="form-group">
             <label for="source">Выберите источник:</label>
             <select id="source" name="source" required>
-                <option value="">-- Выберите --</option>
-                <option value="both" selected>Оба источника (Яндекс + 2GIS)</option>
-                <option value="yandex">Яндекс.Карты</option>
-                <option value="2gis">2GIS</option>
+                <option value=""
+                        {% if not last_form or not last_form.source %}selected{% endif %}>
+                    -- Выберите --
+                </option>
+                <option value="both"
+                    {% if last_form and last_form.source == 'both' %}selected{% endif %}>
+                    Оба источника (Яндекс + 2GIS)
+                </option>
+                <option value="yandex"
+                    {% if last_form and last_form.source == 'yandex' %}selected{% endif %}>
+                    Яндекс.Карты
+                </option>
+                <option value="2gis"
+                    {% if last_form and last_form.source == '2gis' %}selected{% endif %}>
+                    2GIS
+                </option>
             </select>
         </div>
 
         <div class="form-group">
             <label for="email">Ваш email:</label>
-            <input type="email" id="email" name="email" placeholder="например: user@example.com" required>
+            <input type="email" id="email" name="email" placeholder="например: user@example.com" required
+                   value="{{ last_form.email if last_form and last_form.email else '' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="search_scope">Область поиска:</label>
+            <select id="search_scope" name="search_scope" required>
+                <option value=""
+                        {% if not last_form or not last_form.search_scope %}selected{% endif %}>
+                    -- Выберите --
+                </option>
+                <option value="country"
+                    {% if last_form and last_form.search_scope == 'country' %}selected{% endif %}>
+                    Страна / общий поиск
+                </option>
+                <option value="city"
+                    {% if last_form and last_form.search_scope == 'city' %}selected{% endif %}>
+                    Город
+                </option>
+            </select>
+        </div>
+
+        <div class="form-group" id="location_group" style="display: none;">
+            <label for="location">Название города:</label>
+            <input type="text" id="location" name="location" placeholder="Например: Москва, Санкт-Петербург"
+                   value="{{ last_form.location if last_form and last_form.location else '' }}">
+        </div>
+
+        <div class="form-group" id="cities_group" style="display: none; max-height: 320px; overflow-y: auto; border: 1px solid #e0e0e0; padding: 10px; border-radius: 6px; background: #fafafa;">
+            <label>Регионы и города (от 10&nbsp;000 жителей):</label>
+            <p style="font-size: 0.85em; color: #666; margin-top: 4px;">
+                При выборе режима <strong>«Страна / общий поиск»</strong> вы можете отметить города, по которым нужно собрать данные.
+            </p>
+            <div style="margin-top: 6px; margin-bottom: 6px;">
+                <input type="text" id="city_filter" placeholder="Быстрый поиск по городу..."
+                       style="width: 100%; padding: 4px 8px; border-radius: 4px; border: 1px solid #d0d0d0; font-size: 0.85em;">
+            </div>
+            <div id="cities_container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 12px; margin-top: 4px;">
+                <!-- Чекбоксы городов будут подставлены скриптом ниже -->
+            </div>
+            <!-- Сюда перед отправкой формы будет собираться список выбранных городов -->
+            <input type="hidden" id="cities_input" name="cities" value="">
+            <div id="selected_cities_summary" style="margin-top: 6px; font-size: 0.85em; color: #444;">
+                Города не выбраны.
+            </div>
         </div>
 
         <div class="form-group">
             <label for="output_filename">Имя файла отчета:</label>
-            <input type="text" id="output_filename" name="output_filename" value="report.csv">
+            <input type="text" id="output_filename" name="output_filename"
+                   value="{{ last_form.output_filename if last_form and last_form.output_filename else 'report.csv' }}">
         </div>
 
         <button type="submit">Поехали!</button>
     </form>
+
+    <script>
+        // Предварительно выбранные города из последнего заполнения формы
+        const PRESELECTED_CITIES_STR = "{{ last_form.cities if last_form and last_form.cities else '' }}";
+        const PRESELECTED_CITIES = PRESELECTED_CITIES_STR
+            ? PRESELECTED_CITIES_STR.split(/[;,]/).map(s => s.trim()).filter(Boolean)
+            : [];
+
+        // Инициализация чекбоксов городов (группировка по регионам, данные из JSON)
+        (async function initCities() {
+            const container = document.getElementById('cities_container');
+            if (!container) return;
+
+            try {
+                const resp = await fetch('/static/cities_ru_10k.json', {cache: 'no-store'});
+                if (!resp.ok) {
+                    console.error('Failed to load cities_ru_10k.json', resp.status);
+                    return;
+                }
+                const data = await resp.json();
+
+                data.forEach(regionBlock => {
+                    const regionName = regionBlock.region;
+                    const cities = regionBlock.cities || [];
+                    if (!regionName || !cities.length) return;
+
+                    const groupDiv = document.createElement('div');
+                    groupDiv.style.backgroundColor = '#ffffff';
+                    groupDiv.style.border = '1px solid #e5e5e5';
+                    groupDiv.style.borderRadius = '4px';
+                    groupDiv.style.padding = '6px 8px';
+
+                    const groupTitle = document.createElement('div');
+                    groupTitle.textContent = regionName;
+                    groupTitle.style.fontWeight = 'bold';
+                    groupTitle.style.marginBottom = '4px';
+                    groupDiv.appendChild(groupTitle);
+
+                    cities.forEach(city => {
+                        const label = document.createElement('label');
+                        label.style.display = 'block';
+                        label.style.fontSize = '0.85em';
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.value = city;
+                        checkbox.className = 'city-checkbox';
+                        if (PRESELECTED_CITIES.includes(city)) {
+                            checkbox.checked = true;
+                        }
+                        checkbox.addEventListener('change', updateSelectedCitiesSummary);
+                        label.appendChild(checkbox);
+                        label.appendChild(document.createTextNode(' ' + city));
+                        groupDiv.appendChild(label);
+                    });
+
+                    container.appendChild(groupDiv);
+                });
+
+                // После инициализации обновим блок с выбранными городами (учитывая возможные PRESELECTED_CITIES)
+                updateSelectedCitiesSummary();
+            } catch (e) {
+                console.error('Error loading cities list', e);
+            }
+        })();
+
+        // Переключение между режимами "город" и "страна"
+        const searchScopeSelect = document.getElementById('search_scope');
+        const locationGroup = document.getElementById('location_group');
+        const locationInput = document.getElementById('location');
+        const citiesGroup = document.getElementById('cities_group');
+
+        function updateSelectedCitiesSummary() {
+            const summaryEl = document.getElementById('selected_cities_summary');
+            const hiddenInput = document.getElementById('cities_input');
+            const checkedBoxes = Array.from(document.querySelectorAll('.city-checkbox:checked'));
+            const names = checkedBoxes.map(function (el) {
+                return el.value.trim();
+            });
+            if (hiddenInput) {
+                hiddenInput.value = names.join(';');
+            }
+            if (!summaryEl) return;
+            if (!names.length) {
+                summaryEl.textContent = 'Города не выбраны.';
+                return;
+            }
+
+            // Очищаем и строим список "чипов" с крестиками для удаления
+            summaryEl.innerHTML = '';
+
+            const titleSpan = document.createElement('span');
+            titleSpan.textContent = 'Выбраны города (' + names.length + '): ';
+            summaryEl.appendChild(titleSpan);
+
+            checkedBoxes.forEach(function (cb) {
+                const cityName = cb.value.trim();
+                const chip = document.createElement('span');
+                chip.style.display = 'inline-flex';
+                chip.style.alignItems = 'center';
+                chip.style.padding = '2px 6px';
+                chip.style.margin = '2px 4px';
+                chip.style.borderRadius = '10px';
+                chip.style.border = '1px solid #ccc';
+                chip.style.backgroundColor = '#fff';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = cityName;
+                chip.appendChild(nameSpan);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.textContent = '×';
+                removeBtn.title = 'Убрать город из выбора';
+                removeBtn.style.marginLeft = '4px';
+                removeBtn.style.border = 'none';
+                removeBtn.style.background = 'transparent';
+                removeBtn.style.color = '#c62828';
+                removeBtn.style.cursor = 'pointer';
+                removeBtn.style.fontSize = '0.9em';
+
+                removeBtn.addEventListener('click', function () {
+                    cb.checked = false;
+                    updateSelectedCitiesSummary();
+                });
+
+                chip.appendChild(removeBtn);
+                summaryEl.appendChild(chip);
+            });
+        }
+
+        function updateLocationVisibility() {
+            const value = searchScopeSelect.value;
+            if (value === 'city') {
+                // Режим "по городу" — показываем только одно поле города
+                locationGroup.style.display = 'block';
+                locationInput.required = true;
+                citiesGroup.style.display = 'none';
+            } else if (value === 'country') {
+                // Режим "по стране" — показываем только список городов
+                locationGroup.style.display = 'none';
+                locationInput.required = false;
+                locationInput.value = '';
+                citiesGroup.style.display = 'block';
+            } else {
+                // Ничего не выбрано — скрываем оба блока
+                locationGroup.style.display = 'none';
+                locationInput.required = false;
+                citiesGroup.style.display = 'none';
+            }
+        }
+
+        searchScopeSelect.addEventListener('change', updateLocationVisibility);
+        // Инициализируем видимость при загрузке
+        updateLocationVisibility();
+
+        // Перед отправкой формы собираем выбранные города в скрытое поле
+        document.getElementById('parse_form').addEventListener('submit', function () {
+            const scope = searchScopeSelect.value;
+            const hiddenInput = document.getElementById('cities_input');
+            if (scope !== 'country') {
+                hiddenInput.value = '';
+                return;
+            }
+            // На всякий случай синхронизируем скрытое поле перед отправкой
+            updateSelectedCitiesSummary();
+        });
+
+        // Фильтрация списка городов по вводу
+        const cityFilterInput = document.getElementById('city_filter');
+        if (cityFilterInput) {
+            cityFilterInput.addEventListener('input', function () {
+                const term = this.value.toLowerCase();
+                const labels = Array.from(document.querySelectorAll('#cities_container label'));
+                labels.forEach(label => {
+                    const text = label.textContent.toLowerCase();
+                    label.style.display = !term || text.indexOf(term) !== -1 ? 'block' : 'none';
+                });
+
+                // Если введён текст и остался ровно один видимый город — автоматически отмечаем его
+                if (term) {
+                    const visible = labels.filter(label => label.style.display !== 'none');
+                    if (visible.length === 1) {
+                        const cb = visible[0].querySelector('input.city-checkbox');
+                        if (cb && !cb.checked) {
+                            cb.checked = true;
+                        }
+                    }
+                }
+
+                updateSelectedCitiesSummary();
+            });
+        }
+    </script>
 </div>
 </body>
 </html>
+
 

@@ -61,7 +61,43 @@ class CSVWriter(FileWriter):
                 self.writer.writerow(self.fieldnames)
                 self.header_written = True
 
-        row = [data.get(field) for field in self.fieldnames]
+        # Обрабатываем данные для правильной кодировки
+        row = []
+        for field in self.fieldnames:
+            value = data.get(field)
+            # Если значение - строка, убеждаемся что она в правильной кодировке
+            if isinstance(value, str):
+                # Убираем недопустимые символы и нормализуем
+                try:
+                    # Проверяем, что строка правильно закодирована в UTF-8
+                    value.encode('utf-8')
+                    # Убираем BOM и другие невидимые символы
+                    value = value.replace('\ufeff', '').replace('\u200b', '').strip()
+                except UnicodeEncodeError:
+                    # Если есть проблемы, пытаемся исправить
+                    value = value.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
+                except Exception as e:
+                    logger.warning(f"Error processing string value for field {field}: {e}")
+                    value = str(value).encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
+            elif isinstance(value, (list, dict)):
+                # Для сложных структур используем JSON с правильной кодировкой
+                import json
+                try:
+                    value = json.dumps(value, ensure_ascii=False)
+                except Exception as e:
+                    logger.warning(f"Error serializing {type(value)} for field {field}: {e}")
+                    value = str(value)
+            elif value is None:
+                value = ''
+            else:
+                # Для других типов конвертируем в строку
+                try:
+                    value = str(value)
+                    value.encode('utf-8')
+                except:
+                    value = str(value).encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
+            row.append(value)
+        
         self.writer.writerow(row)
         self.wrote_count += 1
 

@@ -28,5 +28,9 @@
     "smtp_port": 587,
     "smtp_user": "",
     "smtp_password": ""
+  },
+  "chrome": {
+    "chromedriver_path": "C:\\Users\\lexxd\\.wdm\\drivers\\chromedriver\\win64\\132.0.6834.159\\chromedriver-win32\\chromedriver.exe",
+    "headless": true
   }
 }
