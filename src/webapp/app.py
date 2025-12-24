@@ -639,7 +639,7 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
             if form_data.search_scope == 'country':
                 if getattr(form_data, "cities", ""):
                     # Если города указаны пользователем, используем их
-                cities_list = _parse_cities(form_data.cities)
+                    cities_list = _parse_cities(form_data.cities)
                 else:
                     # Если города не указаны, используем список крупных городов России
                     # для полного покрытия всех филиалов по стране
@@ -1585,7 +1585,8 @@ async def download_json_report(request: Request, task_id: str, filter_type: Opti
         # Функция для сериализации datetime и других объектов
         def json_serializer(obj):
             if isinstance(obj, datetime):
-                return obj.isoformat()
+                # Возвращаем только дату без времени (формат YYYY-MM-DD)
+                return obj.date().isoformat()
             elif hasattr(obj, '__dict__'):
                 return obj.__dict__
             else:
@@ -1773,7 +1774,7 @@ async def api_restart_task(request: Request, task_id: str):
             cities_list: List[str] = []
             if cloned_form.search_scope == 'country':
                 if getattr(cloned_form, "cities", ""):
-                cities_list = _parse_cities(cloned_form.cities)
+                    cities_list = _parse_cities(cloned_form.cities)
                 else:
                     # Если города не указаны, используем список крупных городов России
                     cities_list = DEFAULT_RUSSIAN_CITIES.copy()

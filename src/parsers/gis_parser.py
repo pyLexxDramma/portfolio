@@ -3,6 +3,7 @@ import json
 import re
 import logging
 import time
+import random
 import urllib.parse
 import hashlib
 import os
@@ -918,37 +919,10 @@ class GisParser(BaseParser):
             test_review_elements = soup_content.select("div._1k5soqfl, [data-review-id], [class*='review-item'], div[class*='_4db12d']")
             logger.info(f"Found {len(test_review_elements)} review elements after scroll on first page")
 
-            # Пагинация по страницам отзывов
-            pagination_links = soup_content.select(
-                'a[href*="/tab/reviews"][href*="page="], a[href*="/reviews"][href*="page="]'
-            )
-            all_pages_urls: set[str] = set()
-            for link in pagination_links:
-                href = link.get('href', '')
-                if href and 'page=' in href:
-                    if not href.startswith('http'):
-                        href = urllib.parse.urljoin("https://2gis.ru", href)
-                    all_pages_urls.add(href)
-            
-            # Также ищем кнопку "Показать еще" или "Загрузить еще отзывы"
-            load_more_selectors = [
-                'button[class*="load"], button[class*="more"], a[class*="load"], a[class*="more"]',
-                '[class*="показать"], [class*="загрузить"], [class*="еще"]',
-            ]
-            has_load_more = False
-            for selector in load_more_selectors:
-                load_more_buttons = soup_content.select(selector)
-                for button in load_more_buttons:
-                    button_text = button.get_text(strip=True).lower()
-                    if any(word in button_text for word in ['показать', 'загрузить', 'еще', 'more', 'load']):
-                        has_load_more = True
-                        logger.info(f"Found 'load more' button: {button_text}")
-                        break
-                if has_load_more:
-                    break
-            
-            if has_load_more:
-                logger.info("Page has 'load more' button - will use infinite scroll approach")
+            # ВАЖНО: 2ГИС не использует пагинацию через URL с параметром ?page=
+            # Вместо этого используется бесконечная прокрутка на одной странице
+            # Все отзывы загружаются через прокрутку на первой странице
+            logger.info(f"2GIS uses infinite scroll, not URL pagination. Processing all reviews on single page (expected: {reviews_count_total})")
 
             all_reviews: List[Dict[str, Any]] = []
             # Шаг 1: Инициализация счетчиков для расчета среднего времени ответа (по предложенному плану)
@@ -960,13 +934,7 @@ class GisParser(BaseParser):
             response_time_count: int = 0
             # Сохраняем card_url для сохранения данных о датах ответов
             current_card_url = card_url
-            pages_to_process: List[str] = [reviews_url]
-            if all_pages_urls:
-                # Обрабатываем только реально существующие страницы (не более 10 для оптимизации)
-                sorted_pages = sorted(all_pages_urls)
-                # Ограничиваем до 10 страниц, чтобы не парсить лишнее
-                pages_to_process.extend(sorted_pages[:10])
-                logger.info(f"Found {len(all_pages_urls)} pagination pages, will process up to 10 pages")
+            pages_to_process: List[str] = [reviews_url]  # Обрабатываем только первую страницу
 
             seen_review_keys: set[str] = set()
 
@@ -975,31 +943,10 @@ class GisParser(BaseParser):
                     logger.info(f"2GIS reviews: stop flag detected before processing reviews page {page_url}, breaking pages loop")
                     break
                 try:
-                    if page_url != reviews_url:
-                        logger.info(f"Processing reviews page: {page_url}")
-                        self.driver.navigate(page_url)
-                        # Ждем загрузки отзывов на новой странице
-                        time.sleep(3)
-                        # Прокручиваем страницу для загрузки всех отзывов
-                        # Получаем ожидаемое количество отзывов для этой страницы
-                        page_source_temp, soup_temp = self._get_page_source_and_soup()
-                        expected_count_temp = 0
-                        meta_desc_temp = soup_temp.select_one('meta[name="description"]')
-                        if meta_desc_temp:
-                            desc_content = meta_desc_temp.get('content', '')
-                            desc_matches = re.findall(r'(\d+)\s+отзыв', desc_content, re.IGNORECASE)
-                            if desc_matches:
-                                expected_count_temp = max(int(m) for m in desc_matches)
-                        logger.info(f"Scrolling page {page_url} to load reviews (expected: {expected_count_temp})")
-                        self._scroll_to_load_all_reviews(expected_count=expected_count_temp)
-                        time.sleep(2)  # Увеличено до 2 сек после прокрутки
-                        
-                        # Проверяем, что новые отзывы действительно загрузились
-                        page_source_after, soup_after = self._get_page_source_and_soup()
-                        reviews_after_scroll = len(soup_after.select("div._1k5soqfl, [data-review-id], [class*='review-item']"))
-                        logger.info(f"After scroll on page {page_url}: found {reviews_after_scroll} review elements")
-                    
-                        page_source, soup_content = self._get_page_source_and_soup()
+                    # Сохраняем количество отзывов до обработки страницы для подсчета новых
+                    reviews_before_page = len(all_reviews)
+                    # Все отзывы уже загружены через прокрутку на первой странице
+                    # Используем уже полученный page_source и soup_content
                     
                     # Кликаем на все "Читать целиком" для загрузки полного текста отзывов
                     # Повторяем попытку до 3 раз при ошибках
@@ -1085,16 +1032,28 @@ class GisParser(BaseParser):
                             break
                         
                         # Минимальная фильтрация: пропускаем только явно невалидные элементы
+                        # ВАЖНО: принимаем все элементы, которые выглядят как отзывы, даже если у них нет текста
+                        # Текст может быть загружен динамически или находиться в дочерних элементах
                         elem_text = review_elem.get_text(strip=True)
-                        if not elem_text or len(elem_text) < 3:
+                        
+                        # Пропускаем только полностью пустые элементы
+                        if not elem_text or len(elem_text) == 0:
                             skipped_count += 1
                             continue
-                        # Пропускаем элементы навигации
-                        if any(skip_word in elem_text.lower() for skip_word in ['читать целиком', 'показать еще', 'следующая', 'предыдущая', 'страница']):
+                        
+                        # Пропускаем только элементы, которые явно являются навигацией (не отзывами)
+                        # Проверяем, что это не просто навигационный элемент
+                        elem_text_lower = elem_text.lower()
+                        is_navigation = any(
+                            skip_word in elem_text_lower and len(elem_text_lower) < 50  # Короткие элементы с навигационными словами
+                            for skip_word in ['читать целиком', 'показать еще', 'следующая', 'предыдущая', 'страница']
+                        )
+                        if is_navigation:
                             skipped_count += 1
                             continue
                         
                         # Сохраняем элемент для последующего парсинга
+                        # Принимаем все элементы, которые могут быть отзывами
                         collected_review_elements.append(review_elem)
                     
                     logger.info(f"Collected {len(collected_review_elements)} review elements for detailed parsing (skipped {skipped_count} invalid elements)")
@@ -1620,19 +1579,19 @@ class GisParser(BaseParser):
                                 f"date={date_text}"
                             )
 
-                        # ОТКЛЮЧЕНО: Проверка на дубликаты отключена для сбора всех отзывов
-                        # Это позволяет собирать все отзывы, включая возможные дубликаты,
-                        # чтобы получить точное количество отвеченных отзывов из структуры страницы
-                        # Уникальный ключ отзыва (оставляем для возможной будущей статистики)
+                        # Уникальный ключ отзыва для проверки дубликатов
+                        # Используем более уникальный ключ: автор + дата + рейтинг + хэш полного текста (или первых 200 символов)
+                        review_text_for_hash = review_text[:200] if review_text else ""
                         review_key = f"{author_name}_{date_text}_{rating_value}_" \
-                            f"{hashlib.md5(review_text[:50].encode('utf-8', errors='ignore')).hexdigest()[:10]}"
-                        # ПРОВЕРКА НА ДУБЛИКАТЫ ОТКЛЮЧЕНА - сохраняем все отзывы
-                        # if review_key in seen_review_keys:
-                        #     if processed_count <= 20 or skipped_count % 10 == 0:
-                        #         logger.debug(f"Skipping duplicate review: key={review_key[:50]}")
-                        #     skipped_count += 1
-                        #     continue
-                        # seen_review_keys.add(review_key)
+                            f"{hashlib.md5(review_text_for_hash.encode('utf-8', errors='ignore')).hexdigest()[:16]}"
+                        # Проверка на дубликаты - пропускаем уже обработанные отзывы
+                        if review_key in seen_review_keys:
+                            # Логируем дубликаты более подробно для диагностики
+                            if processed_count <= 10 or (skipped_count > 0 and skipped_count % 50 == 0):
+                                logger.info(f"Skipping duplicate review on page {page_url}: author={author_name}, date={date_text}, rating={rating_value}, text_preview={review_text[:50] if review_text else 'N/A'}")
+                            skipped_count += 1
+                            continue
+                        seen_review_keys.add(review_key)
 
                         # Очищаем текст отзыва от лишних элементов
                         if review_text:
@@ -1856,11 +1815,14 @@ class GisParser(BaseParser):
                                 skipped_count += 1
                                 continue
                         
-                        # Пропускаем только элементы без рейтинга И без текста И без ответа
-                        # Принимаем отзывы с рейтингом ИЛИ с текстом ИЛИ с ответом
-                        if rating_value == 0 and (not review_text or len(review_text.strip()) < 3) and not is_valid_review_with_response:
+                        # Пропускаем только элементы без рейтинга И без текста И без ответа И без автора
+                        # Принимаем отзывы с рейтингом ИЛИ с текстом ИЛИ с ответом ИЛИ с автором (не анонимным)
+                        # Ослабляем проверку: принимаем элементы, если есть хотя бы автор (не "Аноним")
+                        has_valid_author = author_name and author_name != "Аноним" and len(author_name.strip()) > 0
+                        
+                        if rating_value == 0 and (not review_text or len(review_text.strip()) < 3) and not is_valid_review_with_response and not has_valid_author:
                             if processed_count <= 20 or skipped_count % 10 == 0:
-                                logger.debug(f"Skipping element without rating, text, and response: author={author_name}, has_response={has_response}")
+                                logger.debug(f"Skipping element without rating, text, response, and valid author: author={author_name}, has_response={has_response}")
                             skipped_count += 1
                             continue
                         
@@ -1989,11 +1951,13 @@ class GisParser(BaseParser):
                             skipped_count += 1
 
                     # Логируем статистику по обработанной странице
-                    added_reviews = len([r for r in all_reviews if r.get('review_author')])
+                    # Считаем только новые отзывы на этой странице (не накопительно)
+                    new_reviews_on_page = len(all_reviews) - reviews_before_page
+                    total_reviews = len(all_reviews)
                     logger.info(
                         f"Page {page_url}: found {len(review_elements)} elements, "
                         f"processed {processed_count}, skipped {skipped_count}, "
-                        f"added {added_reviews} reviews"
+                        f"added {new_reviews_on_page} new reviews (total: {total_reviews})"
                     )
                     
                     # Обновляем прогресс после обработки страницы
@@ -2216,23 +2180,23 @@ class GisParser(BaseParser):
         try:
             import time as time_module
             start_time = time_module.time()
-            max_scroll_time = 600  # Увеличено до 10 минут для загрузки всех отзывов
+            max_scroll_time = 1800  # Увеличено до 30 минут для загрузки всех отзывов
             scroll_iterations = 0
-            max_scrolls = self._reviews_scroll_iterations_max
+            max_scrolls = 300  # Увеличено для загрузки всех 319 отзывов (было 100)
             no_change_count = 0
-            required_no_change = 25  # Увеличено до 25 для более стабильной остановки (продолжаем прокрутку дольше)
+            required_no_change = 2  # Останавливаемся после 2 итераций без изменений
             last_review_count = 0
-            max_no_change_iterations = 50  # Увеличено до 50 - продолжаем прокрутку, пока не перестанут появляться новые
             button_click_failures = 0  # Счетчик неудачных попыток клика на кнопку
             max_button_click_failures = 3  # Максимум неудачных попыток клика
             
             # Селекторы должны совпадать с теми, что используются при извлечении отзывов
+            # Основной селектор из анализа структуры страницы: div._1k5soqfl
             review_selectors = [
-                "div._1k5soqfl",  # Основной класс для отзывов в 2GIS
+                "div._1k5soqfl",  # Основной класс для отзывов в 2GIS (подтвержден анализом)
                 '[data-review-id]',
                 '[class*="review-item"]',
                 'div[class*="review"]',
-                'div[class*="_4db12d"]',  # Альтернативный класс
+                'div[class*="_4db12d"]',
                 'li[class*="review"]',
             ]
                 
@@ -2255,16 +2219,47 @@ class GisParser(BaseParser):
                 # Получаем текущее количество отзывов
                 page_source, soup = self._get_page_source_and_soup()
                 current_review_count = 0
+                selector_counts = {}  # Для отладки: сколько элементов находит каждый селектор
                 for selector in review_selectors:
                     found = soup.select(selector)
+                    selector_counts[selector] = len(found)
                     # Фильтруем элементы, которые явно не являются отзывами
-                    # Используем ту же минимальную длину (3 символа), что и при обработке
-                    valid_reviews = [
-                        elem for elem in found 
-                        if elem.get_text(strip=True) and len(elem.get_text(strip=True)) >= 3
-                        and 'читать целиком' not in elem.get_text(strip=True).lower()
-                    ]
+                    # Используем ту же логику фильтрации, что и при парсинге (строки 1088-1103)
+                    valid_reviews = []
+                    for elem in found:
+                        elem_text = elem.get_text(strip=True)
+                        # Минимальная фильтрация: пропускаем только полностью пустые элементы
+                        # ВАЖНО: принимаем все элементы, которые выглядят как отзывы, даже если у них нет текста
+                        # Текст может быть загружен динамически или находиться в дочерних элементах
+                        if not elem_text or len(elem_text) == 0:
+                            continue
+                        # Пропускаем только элементы, которые явно являются навигацией (не отзывами)
+                        # Проверяем, что это не просто навигационный элемент
+                        elem_text_lower = elem_text.lower()
+                        is_navigation = any(
+                            skip_word in elem_text_lower and len(elem_text_lower) < 50  # Короткие элементы с навигационными словами
+                            for skip_word in ['читать целиком', 'показать еще', 'следующая', 'предыдущая', 'страница', 'load more', 'show more']
+                        )
+                        if is_navigation:
+                            continue
+                        valid_reviews.append(elem)
                     current_review_count = max(current_review_count, len(valid_reviews))
+                
+                # Логируем детали для отладки (только первые несколько итераций или при проблемах)
+                if scroll_iterations < 10 or (target_reviews and current_review_count < target_reviews * 0.1) or (current_review_count < 10):
+                    logger.info(f"Selector counts: {selector_counts}, valid reviews: {current_review_count}")
+                    # Если находит очень мало отзывов, логируем более детально
+                    if current_review_count < 5 and scroll_iterations < 20:
+                        # Пробуем найти отзывы через альтернативные методы
+                        alt_selectors = [
+                            'div[class*="_"]',  # Любые div с классами, начинающимися с _
+                            '[class*="item"]',  # Элементы с классом item
+                            'div[class*="card"]',  # Карточки
+                        ]
+                        for alt_sel in alt_selectors:
+                            alt_found = soup.select(alt_sel)
+                            if len(alt_found) > current_review_count:
+                                logger.debug(f"Alternative selector '{alt_sel}' found {len(alt_found)} elements")
                 
                 # Детальное логирование процесса прокрутки
                 elapsed_time = time_module.time() - start_time
@@ -2290,46 +2285,92 @@ class GisParser(BaseParser):
                     no_change_count += 1
                     logger.debug(f"Review count unchanged: {current_review_count} (no_change: {no_change_count}/{required_no_change})")
                     
-                    # Если знаем целевое количество и еще не достигли его, продолжаем прокрутку
-                    # Увеличиваем required_no_change для целевого количества, чтобы не останавливаться преждевременно
-                    if target_reviews and current_review_count < target_reviews:
-                        logger.debug(f"Review count {current_review_count} < target {target_reviews}, continuing scroll... (no_change: {no_change_count})")
-                        # Не останавливаемся, продолжаем прокрутку даже если количество не меняется
-                        # Останавливаемся только если достигли целевого количества или превысили таймаут
                     # Останавливаемся только если:
-                    # 1. Достигли целевого количества
+                    # 1. Достигли целевого количества (98%+ от целевого для уверенности)
                     # 2. ИЛИ количество не меняется в течение required_no_change итераций И мы не знаем целевого количества
-                    elif target_reviews and current_review_count >= target_reviews:
-                        logger.info(f"Reached target reviews count: {current_review_count} >= {target_reviews}, stopping scroll")
-                        break
+                    # 3. ИЛИ если знаем целевое количество, но уже достигли 98%+ и количество не меняется долго
+                    if target_reviews and current_review_count >= target_reviews * 0.98:
+                        # Достигли 98%+ от целевого - можно остановиться, если количество не меняется
+                        if no_change_count >= required_no_change:
+                            logger.info(f"Reached {current_review_count} reviews (98%+ of target {target_reviews}) and count stable for {no_change_count} iterations, stopping scroll")
+                            break
+                        else:
+                            logger.debug(f"Reached {current_review_count} reviews (98%+ of target {target_reviews}), continuing to load remaining... (no_change: {no_change_count}/{required_no_change})")
+                    elif target_reviews and current_review_count < target_reviews * 0.98:
+                        # Еще не достигли 98% от целевого - продолжаем прокрутку дольше
+                        # Увеличено до 10 итераций для загрузки всех отзывов через бесконечную прокрутку
+                        max_no_change_for_target = 10  # Останавливаемся после 10 итераций без изменений (было 3)
+                        if no_change_count >= max_no_change_for_target:
+                            logger.warning(
+                                f"Review count {current_review_count} < 98% of target {target_reviews}, "
+                                f"but no new reviews loaded for {no_change_count} iterations. "
+                                f"Stopping scroll - may have reached limit or all reviews loaded."
+                            )
+                            break
+                        logger.debug(f"Review count {current_review_count} < 98% of target {target_reviews}, continuing scroll... (no_change: {no_change_count}/{max_no_change_for_target})")
                     elif not target_reviews and no_change_count >= required_no_change:
+                        # Не знаем целевого количества и количество не меняется 2 итерации - останавливаемся
                         logger.info(f"Review count stable at {current_review_count} for {no_change_count} iterations, stopping scroll")
                         break
                 
                 # Прокручиваем страницу - пробуем разные способы
                 try:
-                    # Способ 1: Кликаем на "Читать целиком" для загрузки полного текста отзывов
-                    try:
-                        expand_reviews_script = """
-                        var expandLinks = document.querySelectorAll('span._17ww69i, a[class*="читать"], [class*="читать целиком"]');
-                        var clicked = 0;
-                        for (var i = 0; i < Math.min(expandLinks.length, 10); i++) {
-                            var link = expandLinks[i];
-                            if (link.offsetParent !== null) {
-                                try {
-                                    link.click();
-                                    clicked++;
-                                } catch(e) {}
+                    # Сначала ищем контейнер с отзывами для правильной прокрутки
+                    find_reviews_container_script = """
+                    // Ищем контейнер, который содержит отзывы
+                    var reviewContainers = document.querySelectorAll('[class*="review"], [class*="_1k5soqfl"], [data-review-id]');
+                    if (reviewContainers.length > 0) {
+                        // Находим родительский контейнер, который содержит все отзывы
+                        var firstReview = reviewContainers[0];
+                        var parent = firstReview.parentElement;
+                        while (parent && parent !== document.body) {
+                            var children = parent.querySelectorAll('[class*="_1k5soqfl"], [data-review-id]');
+                            if (children.length >= 2) {
+                                // Проверяем, что это прокручиваемый контейнер
+                                if (parent.scrollHeight > parent.clientHeight) {
+                                    return {
+                                        'found': true,
+                                        'selector': parent.className ? '.' + parent.className.split(' ').join('.') : null,
+                                        'scrollHeight': parent.scrollHeight,
+                                        'clientHeight': parent.clientHeight,
+                                        'reviewsCount': children.length
+                                    };
+                                }
                             }
+                            parent = parent.parentElement;
                         }
-                        return clicked;
-                        """
-                        clicked_count = self.driver.execute_script(expand_reviews_script)
-                        if clicked_count > 0:
-                            logger.debug(f"Clicked 'read more' on {clicked_count} reviews")
-                            time.sleep(2.5)  # Увеличено до 2.5 сек для загрузки полного текста
-                    except Exception as click_error:
-                        logger.debug(f"Could not click 'read more' links: {click_error}")
+                    }
+                    return {'found': false};
+                    """
+                    container_info = self.driver.execute_script(find_reviews_container_script)
+                    
+                    # Определяем количество отзывов для прокрутки (5-10 случайно)
+                    reviews_per_scroll = random.randint(5, 10)
+                    
+                    # Способ 1: Кликаем на "Читать целиком" для загрузки полного текста отзывов
+                    # Делаем это реже для имитации человеческого поведения
+                    if scroll_iterations % 3 == 0:  # Каждые 3 итерации
+                        try:
+                            expand_reviews_script = """
+                            var expandLinks = document.querySelectorAll('span._17ww69i, a[class*="читать"], [class*="читать целиком"]');
+                            var clicked = 0;
+                            for (var i = 0; i < Math.min(expandLinks.length, 10); i++) {
+                                var link = expandLinks[i];
+                                if (link.offsetParent !== null) {
+                                    try {
+                                        link.click();
+                                        clicked++;
+                                    } catch(e) {}
+                                }
+                            }
+                            return clicked;
+                            """
+                            clicked_count = self.driver.execute_script(expand_reviews_script)
+                            if clicked_count > 0:
+                                logger.debug(f"Clicked 'read more' on {clicked_count} reviews")
+                                time.sleep(random.uniform(1.5, 2.5))  # Случайная задержка
+                        except Exception as click_error:
+                            logger.debug(f"Could not click 'read more' links: {click_error}")
                     
                     # Способ 2: Ищем и кликаем кнопку "Показать еще" / "Загрузить еще"
                     # Проверяем наличие кнопки после каждой порции, не только при достижении 45 отзывов
@@ -2398,18 +2439,22 @@ class GisParser(BaseParser):
                             clicked = self.driver.execute_script(load_more_script)
                             if clicked:
                                 logger.info("Clicked 'load more' / 'next page' button to load more reviews")
-                                time.sleep(3.5)  # Увеличено до 3.5 сек для загрузки новых отзывов после клика
+                                time.sleep(random.uniform(2.5, 4.0))  # Случайная задержка для имитации человеческого поведения
                                 
                                 # Проверяем, увеличилось ли количество отзывов
                                 page_source_after, soup_after = self._get_page_source_and_soup()
                                 reviews_after_click = 0
                                 for selector in review_selectors:
                                     found_after = soup_after.select(selector)
-                                    valid_after = [
-                                        elem for elem in found_after 
-                                        if elem.get_text(strip=True) and len(elem.get_text(strip=True)) >= 3
-                                        and 'читать целиком' not in elem.get_text(strip=True).lower()
-                                    ]
+                                    # Используем ту же логику фильтрации, что и при парсинге
+                                    valid_after = []
+                                    for elem in found_after:
+                                        elem_text = elem.get_text(strip=True)
+                                        if not elem_text or len(elem_text) < 3:
+                                            continue
+                                        if any(skip_word in elem_text.lower() for skip_word in ['читать целиком', 'показать еще', 'следующая', 'предыдущая', 'страница']):
+                                            continue
+                                        valid_after.append(elem)
                                     reviews_after_click = max(reviews_after_click, len(valid_after))
                                 
                                 if reviews_after_click <= reviews_before_click:
@@ -2431,29 +2476,41 @@ class GisParser(BaseParser):
                             button_click_failures += 1
                             logger.debug(f"Could not click load more button: {click_error}. Failures: {button_click_failures}/{max_button_click_failures}")
                     
-                    # Способ 3: Прокрутка контейнера с отзывами (если есть)
-                    scroll_container_script = """
-                    var containers = document.querySelectorAll('[class*="scroll"], [class*="reviews"], [class*="list"]');
-                    for (var i = 0; i < containers.length; i++) {
-                        var container = containers[i];
-                        if (container.scrollHeight > container.clientHeight && container.scrollHeight > 500) {
-                            container.scrollTop = container.scrollHeight;
-                            return true;
-                        }
+                    # Способ 3: Прокрутка до последнего элемента отзыва через scrollIntoView
+                    # ВАЖНО: Это работает на 2ГИС! Прокрутка до последнего элемента триггерит загрузку новых отзывов
+                    scroll_to_last_review_script = """
+                    var reviews = document.querySelectorAll('div._1k5soqfl');
+                    if (reviews.length > 0) {
+                        var lastReview = reviews[reviews.length - 1];
+                        lastReview.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                        return {
+                            'scrolled': true,
+                            'reviewsCount': reviews.length,
+                            'method': 'scrollIntoView'
+                        };
                     }
-                    return false;
+                    // Фоллбэк: прокрутка страницы
+                    var oldPageScroll = window.pageYOffset || document.documentElement.scrollTop || 0;
+                    var oldPageHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+                    window.scrollBy(0, 1000);
+                    var newPageScroll = window.pageYOffset || document.documentElement.scrollTop || 0;
+                    var newPageHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+                    return {
+                        'scrolled': true,
+                        'reviewsCount': 0,
+                        'method': 'window.scrollBy',
+                        'oldScrollTop': oldPageScroll,
+                        'newScrollTop': newPageScroll,
+                        'oldScrollHeight': oldPageHeight,
+                        'newScrollHeight': newPageHeight
+                    };
                     """
-                    has_scroll_container = self.driver.execute_script(scroll_container_script)
-                    if has_scroll_container:
-                        time.sleep(2.5)  # Увеличено до 2.5 сек для загрузки после прокрутки контейнера
+                    scroll_result = self.driver.execute_script(scroll_to_last_review_script)
                     
-                    # Способ 4: Прокрутка всей страницы
-                    self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                    time.sleep(2.5)  # Увеличено до 2.5 сек между порциями отзывов
-                    
-                    # Способ 5: Прокрутка на фиксированное расстояние
-                    self.driver.execute_script("window.scrollBy(0, 1500);")
-                    time.sleep(2.5)  # Увеличено до 2.5 сек для загрузки новых отзывов
+                    # Задержка для загрузки новых отзывов после scrollIntoView
+                    # ВАЖНО: scrollIntoView триггерит загрузку, нужно дать время на загрузку
+                    delay = random.uniform(2.0, 4.0)  # Увеличено для надежной загрузки новых отзывов
+                    time.sleep(delay)
                     
                 except Exception as scroll_error:
                     logger.warning(f"Error during scroll: {scroll_error}")

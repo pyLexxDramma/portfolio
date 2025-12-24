@@ -12,11 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 class DateTimeJSONEncoder:
-    """Кастомный encoder для JSON, который конвертирует datetime объекты в строки ISO формата"""
+    """Кастомный encoder для JSON, который конвертирует datetime объекты в строки формата даты (YYYY-MM-DD)"""
     @staticmethod
     def default(obj):
         if isinstance(obj, datetime.datetime):
-            return obj.isoformat()
+            # Возвращаем только дату без времени (формат YYYY-MM-DD)
+            return obj.date().isoformat()
         elif isinstance(obj, datetime.date):
             return obj.isoformat()
         raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
