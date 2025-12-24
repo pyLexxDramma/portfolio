@@ -2070,16 +2070,19 @@ class GisParser(BaseParser):
                     reviews_info['avg_response_time_days'] = 0.0
                     logger.info("No response time data available for answered reviews block")
             
-            # ВАЖНО: используем количество отвеченных отзывов из структуры страницы для агрегированной информации
-            # Это точное значение, которое отображается на странице карточки
+            # ВАЖНО: используем фактическое количество отвеченных отзывов из парсинга (answered_reviews_list)
+            # Это более точное значение, так как оно собирается после прокрутки всех страниц
+            # Приоритет: parsed_answered_count (из парсинга) > answered_reviews_count (из структуры страницы)
             parsed_answered_count = len(answered_reviews_list)
-            if answered_reviews_count > 0:
+            if parsed_answered_count > 0:
+                reviews_info['answered_count'] = parsed_answered_count
+                logger.info(f"Using parsed answered reviews count: {parsed_answered_count} (structure count: {answered_reviews_count})")
+            elif answered_reviews_count > 0:
                 reviews_info['answered_count'] = answered_reviews_count
                 logger.info(f"Using answered reviews count from card page structure: {answered_reviews_count} (parsed answered: {parsed_answered_count})")
-            # Если не нашли в структуре, используем фактическое количество из парсинга
-            elif parsed_answered_count > 0:
-                reviews_info['answered_count'] = parsed_answered_count
-                logger.info(f"Using parsed answered reviews count: {parsed_answered_count} (no structure count found)")
+            else:
+                reviews_info['answered_count'] = 0
+                logger.info(f"No answered reviews found (structure count: {answered_reviews_count}, parsed: {parsed_answered_count})")
             
             # Сохраняем рейтинг карточки из структуры страницы
             reviews_info['card_rating_from_page'] = card_rating_from_page
@@ -3661,19 +3664,21 @@ class GisParser(BaseParser):
                     snippet_positive = snippet_data.get('card_reviews_positive', 0)
                     snippet_negative = snippet_data.get('card_reviews_negative', 0)
                     
-                    # Если есть данные из snippet - используем их для агрегированной информации
-                    # Иначе используем данные из детального парсинга
-                    # ВАЖНО: snippet данные приоритетнее, так как они точнее отражают реальное количество на странице поиска
-                    if snippet_reviews_count > 0:
+                    # ВАЖНО: Используем reviews_count из структуры страницы (reviews_data.get('reviews_count'))
+                    # Это точное значение, которое отображается на странице карточки
+                    # Приоритет: reviews_data['reviews_count'] > snippet > детальный парсинг
+                    reviews_data_count = reviews_data.get('reviews_count', 0) if reviews_data else 0
+                    if reviews_data_count > 0:
+                        actual_reviews_count = reviews_data_count
+                        logger.info(f"Using reviews count from card page structure: {actual_reviews_count} (card: {name})")
+                    elif snippet_reviews_count > 0:
                         actual_reviews_count = snippet_reviews_count
                         logger.info(f"Using snippet reviews count for aggregation: {actual_reviews_count} (card: {name})")
                     else:
                         # Используем количество из детального парсинга
                         detailed_count = len(detailed_reviews_list) if detailed_reviews_list else 0
-                        reviews_data_count = reviews_data.get('reviews_count', 0) if reviews_data else 0
-                        # Берем максимальное значение из доступных
-                        actual_reviews_count = max(detailed_count, reviews_data_count)
-                        logger.info(f"Using detailed reviews count for aggregation: {actual_reviews_count} (detailed={detailed_count}, reviews_data={reviews_data_count}, card: {name})")
+                        actual_reviews_count = detailed_count
+                        logger.info(f"Using detailed reviews count for aggregation: {actual_reviews_count} (detailed={detailed_count}, card: {name})")
                     
                     # Для рейтинга используем данные из структуры страницы карточки (приоритет), затем из snippet
                     card_rating_from_page = reviews_data.get('card_rating_from_page', 0.0)
@@ -3745,6 +3750,7 @@ class GisParser(BaseParser):
                         'positive_reviews_list': positive_reviews_list,  # Блок позитивных отзывов
                         'negative_reviews_list': negative_reviews_list,  # Блок негативных отзывов
                         'answered_reviews_list': answered_reviews_list,  # Блок отзывов с ответом (для вычисления среднего времени ответа)
+                        'card_url': card_url,  # URL карточки для верификации
                         'source': '2gis',
                     }
                     

@@ -1597,6 +1597,52 @@ async def get_task(request: Request, task_id: str):
                     card = {**card, "city": "Город не указан"}
             normalized_cards.append(card)
         cards = normalized_cards
+        
+        # Проверка данных на возможные несоответствия с реальными страницами
+        data_verification_warnings = []
+        if task.status == "COMPLETED" and cards and statistics:
+            # Группируем карточки по источникам для проверки агрегированных данных
+            cards_by_source = {}
+            for card in cards:
+                source = card.get("source", "unknown")
+                if source not in cards_by_source:
+                    cards_by_source[source] = []
+                cards_by_source[source].append(card)
+            
+            # Проверяем каждую карточку
+            for card in cards:
+                source = card.get("source", "unknown")
+                card_name = card.get("card_name", "N/A")
+                card_reviews = card.get("card_reviews_count", 0)
+                detailed_count = len(card.get("detailed_reviews", []))
+                
+                # Проверка: количество детальных отзывов должно соответствовать количеству отзывов в карточке
+                if detailed_count != card_reviews and card_reviews > 0:
+                    data_verification_warnings.append({
+                        "type": "detailed_reviews_mismatch",
+                        "source": source,
+                        "card_name": card_name,
+                        "message": f"Количество детальных отзывов ({detailed_count}) не совпадает с общим количеством отзывов ({card_reviews}) в карточке"
+                    })
+                
+                # Проверка: если есть несколько карточек одного источника, проверяем соответствие агрегированных данных
+                source_cards = cards_by_source.get(source, [])
+                if len(source_cards) > 1:
+                    total_card_reviews = sum(c.get("card_reviews_count", 0) for c in source_cards)
+                    aggregated_reviews = statistics.get(source, {}).get("aggregated_reviews_count", 0)
+                    if total_card_reviews != aggregated_reviews and aggregated_reviews > 0:
+                        # Если сумма отзывов по карточкам не совпадает с агрегированным значением
+                        # (это может быть нормально, если aggregated учитывает другие факторы)
+                        # Но предупредим, если разница значительная
+                        diff = abs(total_card_reviews - aggregated_reviews)
+                        if diff > 5:  # Разница больше 5 отзывов
+                            data_verification_warnings.append({
+                                "type": "aggregated_mismatch",
+                                "source": source,
+                                "card_name": f"{len(source_cards)} карточек",
+                                "message": f"Сумма отзывов по карточкам ({total_card_reviews}) отличается от агрегированного значения ({aggregated_reviews}). Это может быть связано с особенностями агрегации данных."
+                            })
+        
         output_dir = getattr(settings.app_config.writer, 'output_dir', './output') if hasattr(settings, 'app_config') and hasattr(settings.app_config, 'writer') else './output'
 
         return templates.TemplateResponse(
@@ -1613,6 +1659,7 @@ async def get_task(request: Request, task_id: str):
                 "summary_fields": SUMMARY_FIELDS,
                 "output_dir": output_dir,
                 "show_problem_cards": show_problem_cards,
+                "data_verification_warnings": data_verification_warnings if task.status == "COMPLETED" else [],
                 # Префикс корневого пути (для работы за reverse-proxy, например /parser)
                 "url_prefix": url_prefix,
             },

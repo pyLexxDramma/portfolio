@@ -102,6 +102,16 @@ class PDFWriter:
             spaceAfter=3
         ))
 
+        self.styles.add(ParagraphStyle(
+            name='CustomFooter',
+            parent=self.styles['Normal'],
+            fontSize=8,
+            fontName=self.base_font_name,
+            textColor=colors.HexColor('#666666'),
+            alignment=TA_CENTER,
+            spaceBefore=10
+        ))
+
     def set_file_path(self, file_path: str):
         self.file_path = file_path
 
@@ -137,7 +147,17 @@ class PDFWriter:
             if detailed_cards:
                 self._add_cards_section(detailed_cards)
 
-            self.doc.build(self.story)
+            # Добавляем футер с авторскими правами
+            self._add_footer()
+
+            # Настраиваем футер на каждой странице
+            def on_first_page(canvas, doc):
+                self._draw_footer(canvas, doc)
+
+            def on_later_pages(canvas, doc):
+                self._draw_footer(canvas, doc)
+
+            self.doc.build(self.story, onFirstPage=on_first_page, onLaterPages=on_later_pages)
             logger.info(f"PDF report generated: {output_path}")
             return output_path
 
@@ -156,15 +176,17 @@ class PDFWriter:
         # Общий рейтинг карточки из структуры страницы (_1tam240)
         card_rating_from_page = stats.get('aggregated_card_rating_from_page', 0.0)
         if card_rating_from_page > 0:
-            # Формируем звездочки для рейтинга
-            stars = '★' * int(card_rating_from_page) + '☆' * (5 - int(card_rating_from_page))
-            data.append(['Общий рейтинг', f"{card_rating_from_page:.1f} {stars}"])
+            # Формируем читабельный текст на русском вместо звездочек
+            rating_int = int(card_rating_from_page)
+            rating_text = f"{rating_int} из 5 звезд"
+            data.append(['Общий рейтинг', f"{card_rating_from_page:.1f} ({rating_text})"])
         else:
             # Fallback на средний рейтинг по отзывам с текстом
             avg_rating = stats.get('aggregated_rating', 0)
             if avg_rating > 0:
-                stars = '★' * int(avg_rating) + '☆' * (5 - int(avg_rating))
-                data.append(['Общий рейтинг по отзывам с текстом', f"{avg_rating:.2f} {stars}"])
+                rating_int = int(avg_rating)
+                rating_text = f"{rating_int} из 5 звезд"
+                data.append(['Общий рейтинг по отзывам с текстом', f"{avg_rating:.2f} ({rating_text})"])
             else:
                 data.append(['Общий рейтинг', "—"])
         
@@ -198,14 +220,14 @@ class PDFWriter:
             else:
                 data.append(['Среднее время ответа', "—"])
 
-        data.append(['Позитивных отзывов (4-5⭐)', str(stats.get('aggregated_positive_reviews', 0))])
-        data.append(['Нейтральных отзывов (3⭐)', str(stats.get('aggregated_neutral_reviews', 0))])
-        data.append(['Негативных отзывов (1-2⭐)', str(stats.get('aggregated_negative_reviews', 0))])
+        data.append(['Позитивных отзывов (4-5 звезд)', str(stats.get('aggregated_positive_reviews', 0))])
+        data.append(['Нейтральных отзывов (3 звезды)', str(stats.get('aggregated_neutral_reviews', 0))])
+        data.append(['Негативных отзывов (1-2 звезды)', str(stats.get('aggregated_negative_reviews', 0))])
         
-        # С оценкой (1-5⭐) - сумма всех отзывов с рейтингом
+        # С оценкой (1-5 звезд) - сумма всех отзывов с рейтингом
         rated_reviews = stats.get('aggregated_rated_reviews_count', 0)
         if rated_reviews > 0:
-            data.append(['С оценкой (1-5⭐)', str(rated_reviews)])
+            data.append(['С оценкой (1-5 звезд)', str(rated_reviews)])
 
         table = Table(data, colWidths=[8*cm, 6*cm])
         table.setStyle(TableStyle([
@@ -231,10 +253,25 @@ class PDFWriter:
         for idx, card in enumerate(cards, 1):
             self.story.append(Paragraph(f"Карточка {idx}: {card.get('card_name', 'Без названия')}", self.styles['Heading3']))
 
+            # Форматируем рейтинг карточки
+            card_rating = card.get('card_rating', '—')
+            if card_rating and card_rating != '—' and str(card_rating).strip():
+                try:
+                    rating_float = float(str(card_rating).replace(',', '.'))
+                    if rating_float > 0:
+                        rating_int = int(rating_float)
+                        rating_text = f"{rating_float:.1f} ({rating_int} из 5 звезд)"
+                    else:
+                        rating_text = str(card_rating)
+                except (ValueError, TypeError):
+                    rating_text = str(card_rating)
+            else:
+                rating_text = "—"
+            
             card_data = [
                 ['Параметр', 'Значение'],
                 ['Адрес', card.get('card_address', 'Не указан')],
-                ['Рейтинг', str(card.get('card_rating', '—'))],
+                ['Рейтинг', rating_text],
                 ['Количество отзывов', str(card.get('card_reviews_count', 0))],
             ]
 
@@ -242,8 +279,8 @@ class PDFWriter:
                 card_data.append(['Отвечено отзывов', str(card.get('card_answered_reviews_count', 0))])
                 card_data.append(['Не отвечено отзывов', str(card.get('card_unanswered_reviews_count', 0))])
 
-            if card.get('card_avg_response_time'):
-                card_data.append(['Среднее время ответа', f"{card.get('card_avg_response_time')} дней"])
+            if card.get('card_avg_response_time') and card.get('card_avg_response_time') > 0:
+                card_data.append(['Среднее время ответа', f"{card.get('card_avg_response_time'):.2f} дней"])
 
             card_data.append(['Положительных отзывов', str(card.get('card_reviews_positive', 0))])
             card_data.append(['Отрицательных отзывов', str(card.get('card_reviews_negative', 0))])
@@ -276,7 +313,20 @@ class PDFWriter:
                     if review.get('review_author'):
                         review_text += f"Автор: {review.get('review_author')}<br/>"
                     if review.get('review_rating'):
-                        review_text += f"Рейтинг: {'⭐' * int(review.get('review_rating', 0))} ({review.get('review_rating')})<br/>"
+                        rating_value = review.get('review_rating', 0)
+                        try:
+                            rating_float = float(str(rating_value).replace(',', '.'))
+                            if rating_float > 0:
+                                rating_int = int(rating_float)
+                                # Используем читабельный текст на русском вместо звездочек
+                                # Формат: "5.0 (5 из 5 звезд)" - полностью читабельно
+                                rating_text = f"{rating_int} из 5 звезд"
+                                review_text += f"Рейтинг: {rating_float:.1f} ({rating_text})<br/>"
+                            else:
+                                review_text += f"Рейтинг: не указан<br/>"
+                        except (ValueError, TypeError):
+                            # Если не удалось преобразовать в число, показываем как есть
+                            review_text += f"Рейтинг: {rating_value}<br/>"
                     elif review.get('review_text'):  # Если нет рейтинга, но есть текст, показываем "Рейтинг не указан"
                         review_text += f"Рейтинг: не указан<br/>"
                     if review.get('review_date'):
@@ -304,5 +354,47 @@ class PDFWriter:
 
             if idx % 2 == 0 and idx < len(cards):
                 self.story.append(PageBreak())
+
+    def _add_footer(self):
+        """Добавляет футер с авторскими правами в конец документа"""
+        self.story.append(Spacer(1, 1*cm))
+        footer_text = (
+            f"© {datetime.now().year} Разработано: "
+            f"<link href='https://github.com/pyLexxDramma' color='blue'>"
+            f"<u>GitHub: pyLexxDramma</u></link>"
+        )
+        self.story.append(Paragraph(footer_text, self.styles['CustomFooter']))
+
+    def _draw_footer(self, canvas, doc):
+        """Рисует футер на каждой странице PDF"""
+        canvas.saveState()
+        
+        # Текст футера
+        footer_text = f"© {datetime.now().year} Разработано: GitHub: pyLexxDramma"
+        github_url = "https://github.com/pyLexxDramma"
+        
+        # Позиция футера (внизу страницы)
+        footer_y = 1*cm
+        canvas.setFont(self.base_font_name, 8)
+        canvas.setFillColor(colors.HexColor('#666666'))
+        
+        # Центрируем текст
+        text_width = canvas.stringWidth(footer_text, self.base_font_name, 8)
+        page_width = doc.pagesize[0]
+        x = (page_width - text_width) / 2
+        
+        canvas.drawString(x, footer_y, footer_text)
+        
+        # Добавляем кликабельную ссылку на GitHub
+        # Находим позицию текста "GitHub: pyLexxDramma" в строке
+        github_text = "GitHub: pyLexxDramma"
+        github_start_pos = footer_text.find(github_text)
+        if github_start_pos >= 0:
+            github_text_width = canvas.stringWidth(github_text, self.base_font_name, 8)
+            link_x = x + canvas.stringWidth(footer_text[:github_start_pos], self.base_font_name, 8)
+            link_rect = [link_x, footer_y - 2, link_x + github_text_width, footer_y + 8]
+            canvas.linkURL(github_url, link_rect, relative=0)
+        
+        canvas.restoreState()
 
 

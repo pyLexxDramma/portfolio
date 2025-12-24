@@ -2288,6 +2288,8 @@ class YandexParser(BaseParser):
                     card_data = self._extract_card_data_from_detail_page(card_soup, pre_extracted_website=pre_extracted_website)
                     
                     if card_data and card_data.get('card_name'):
+                        # Добавляем URL карточки для верификации
+                        card_data['card_url'] = card_url
                         # Дополнительная проверка адреса (если не была выполнена ранняя фильтрация)
                         if self._target_address and card_url not in card_url_to_address:
                             card_address = card_data.get('card_address', '')
