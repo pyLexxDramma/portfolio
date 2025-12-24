@@ -32,7 +32,7 @@ class GisParser(BaseParser):
         self._scroll_max_iter: int = getattr(self._settings.parser, 'gis_scroll_max_iter', 100)
         self._scroll_wait_time: float = getattr(self._settings.parser, 'gis_scroll_wait_time', 0.5)
         self._reviews_scroll_step: int = getattr(self._settings.parser, 'gis_reviews_scroll_step', 500)
-        self._reviews_scroll_iterations_max: int = getattr(self._settings.parser, 'gis_reviews_scroll_max_iter', 200)  # Увеличено для загрузки всех отзывов
+        self._reviews_scroll_iterations_max: int = getattr(self._settings.parser, 'gis_reviews_scroll_max_iter', 500)  # Увеличено с 200 до 500 для поиска по стране
         self._reviews_scroll_iterations_min: int = getattr(self._settings.parser, 'gis_reviews_scroll_min_iter', 30)
         self._max_records: int = getattr(self._settings.parser, 'max_records', 1000)
 
@@ -2182,7 +2182,7 @@ class GisParser(BaseParser):
             start_time = time_module.time()
             max_scroll_time = 1800  # Увеличено до 30 минут для загрузки всех отзывов
             scroll_iterations = 0
-            max_scrolls = 300  # Увеличено для загрузки всех 319 отзывов (было 100)
+            max_scrolls = 500  # Увеличено с 300 до 500 для поиска по стране
             no_change_count = 0
             required_no_change = 2  # Останавливаемся после 2 итераций без изменений
             last_review_count = 0
@@ -2523,6 +2523,8 @@ class GisParser(BaseParser):
                 f"Scroll completed after {scroll_iterations} iterations in {elapsed_total:.1f}s. "
                 f"Found {last_review_count} reviews (target: {target_reviews if target_reviews else 'unknown'})"
             )
+            if scroll_iterations >= max_scrolls and target_reviews and last_review_count < target_reviews * 0.95:
+                logger.warning(f"⚠️  ВНИМАНИЕ: Достигнут лимит прокрутки ({max_scrolls} итераций). Найдено {last_review_count} из {target_reviews} отзывов ({last_review_count/target_reviews*100:.1f}%). Некоторые отзывы могут быть пропущены.")
         except Exception as e:
             logger.warning(f"Error scrolling reviews: {e}", exc_info=True)
 
@@ -3216,7 +3218,7 @@ class GisParser(BaseParser):
             pagination_urls = self._get_pagination_links(soup, url)
 
             all_card_urls: set[str] = set()
-            max_pages = 20
+            max_pages = 100  # Увеличено с 20 до 100 для поиска по стране
             
             # Словари для раннего извлечения адресов и сайтов из snippets (оптимизация)
             card_url_to_address: Dict[str, str] = {}
@@ -3228,6 +3230,8 @@ class GisParser(BaseParser):
             if pagination_urls:
                 # ограничиваемся разумным числом страниц
                 pages_to_process.extend(pagination_urls[: max_pages - 1])
+                if len(pagination_urls) > max_pages - 1:
+                    logger.warning(f"⚠️  ВНИМАНИЕ: Найдено {len(pagination_urls)} страниц поиска, но будет обработано только {max_pages}. Некоторые карточки могут быть пропущены.")
 
             for page_num, page_url in enumerate(pages_to_process, start=1):
                 if self._is_stopped():

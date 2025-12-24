@@ -717,12 +717,15 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                             "total_cards_found": 0,
                             "aggregated_rating": 0.0,
                             "aggregated_reviews_count": 0,
+                            "aggregated_ratings_count": 0,
                             "aggregated_positive_reviews": 0,
                             "aggregated_negative_reviews": 0,
+                            "aggregated_neutral_reviews": 0,
                             "aggregated_answered_reviews_count": 0,
                             "aggregated_unanswered_reviews_count": 0,
                             "aggregated_avg_response_time": 0.0,
                             "aggregated_answered_reviews_percent": 0.0,
+                            "aggregated_reviews_with_rating_count": 0,
                         }
                         total_rating_sum = 0.0
                         total_rating_weight = 0
@@ -737,12 +740,15 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                                 total_rating_weight += reviews_cnt
 
                             combined["aggregated_reviews_count"] += reviews_cnt
+                            combined["aggregated_ratings_count"] += s.get("aggregated_ratings_count", 0) or 0
                             combined["aggregated_positive_reviews"] += s.get("aggregated_positive_reviews", 0) or 0
                             combined["aggregated_negative_reviews"] += s.get("aggregated_negative_reviews", 0) or 0
+                            combined["aggregated_neutral_reviews"] += s.get("aggregated_neutral_reviews", 0) or 0
                             answered = s.get("aggregated_answered_reviews_count", 0) or 0
                             unanswered = s.get("aggregated_unanswered_reviews_count", 0) or 0
                             combined["aggregated_answered_reviews_count"] += answered
                             combined["aggregated_unanswered_reviews_count"] += unanswered
+                            combined["aggregated_reviews_with_rating_count"] += s.get("aggregated_reviews_with_rating_count", 0) or 0
 
                             resp_time = s.get("aggregated_avg_response_time", 0.0) or 0.0
                             if resp_time > 0 and answered > 0:
@@ -769,6 +775,72 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                         statistics["yandex"] = _combine_stats(yandex_stats_list)
                     if gis_stats_list:
                         statistics["2gis"] = _combine_stats(gis_stats_list)
+                    
+                    # Формируем объединённую статистику для случая с множественными городами
+                    if statistics:
+                        combined: Dict[str, Any] = {
+                            'search_query_name': form_data.company_name,
+                            'total_cards_found': 0,
+                            'aggregated_rating': 0.0,
+                            'aggregated_reviews_count': 0,
+                            'aggregated_ratings_count': 0,
+                            'aggregated_positive_reviews': 0,
+                            'aggregated_negative_reviews': 0,
+                            'aggregated_neutral_reviews': 0,
+                            'aggregated_answered_reviews_count': 0,
+                            'aggregated_unanswered_reviews_count': 0,
+                            'aggregated_avg_response_time': 0.0,
+                            'aggregated_answered_reviews_percent': 0.0,
+                            'aggregated_reviews_with_rating_count': 0,
+                        }
+                        
+                        total_rating_sum = 0.0
+                        total_rating_weight = 0
+                        total_response_time_sum = 0.0
+                        total_response_time_weight = 0
+                        
+                        for src_key in ['yandex', '2gis']:
+                            src_stats = statistics.get(src_key)
+                            if not src_stats:
+                                continue
+                            
+                            combined['total_cards_found'] += src_stats.get('total_cards_found', 0) or 0
+                            
+                            reviews_cnt = src_stats.get('aggregated_reviews_count', 0) or 0
+                            if reviews_cnt > 0:
+                                total_rating_sum += (src_stats.get('aggregated_rating', 0.0) or 0.0) * reviews_cnt
+                                total_rating_weight += reviews_cnt
+                            
+                            combined['aggregated_reviews_count'] += reviews_cnt
+                            combined['aggregated_ratings_count'] += src_stats.get('aggregated_ratings_count', 0) or 0
+                            combined['aggregated_positive_reviews'] += src_stats.get('aggregated_positive_reviews', 0) or 0
+                            combined['aggregated_negative_reviews'] += src_stats.get('aggregated_negative_reviews', 0) or 0
+                            combined['aggregated_neutral_reviews'] += src_stats.get('aggregated_neutral_reviews', 0) or 0
+                            combined['aggregated_answered_reviews_count'] += src_stats.get('aggregated_answered_reviews_count', 0) or 0
+                            combined['aggregated_unanswered_reviews_count'] += src_stats.get('aggregated_unanswered_reviews_count', 0) or 0
+                            combined['aggregated_reviews_with_rating_count'] += src_stats.get('aggregated_reviews_with_rating_count', 0) or 0
+                            
+                            resp_time = src_stats.get('aggregated_avg_response_time', 0.0) or 0.0
+                            answered = src_stats.get('aggregated_answered_reviews_count', 0) or 0
+                            if resp_time > 0 and answered > 0:
+                                total_response_time_sum += resp_time * answered
+                                total_response_time_weight += answered
+                        
+                        if total_rating_weight > 0:
+                            combined['aggregated_rating'] = round(total_rating_sum / total_rating_weight, 2)
+                        
+                        if combined['aggregated_reviews_count'] > 0:
+                            combined['aggregated_answered_reviews_percent'] = round(
+                                (combined['aggregated_answered_reviews_count'] / combined['aggregated_reviews_count']) * 100,
+                                2
+                            )
+                        
+                        if total_response_time_weight > 0:
+                            combined['aggregated_avg_response_time'] = round(
+                                total_response_time_sum / total_response_time_weight, 2
+                            )
+                        
+                        statistics['combined'] = combined
 
                 else:
                     # Старое поведение: один общий поиск по стране или городу
@@ -828,12 +900,15 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                         'total_cards_found': 0,
                         'aggregated_rating': 0.0,
                         'aggregated_reviews_count': 0,
+                        'aggregated_ratings_count': 0,
                         'aggregated_positive_reviews': 0,
                         'aggregated_negative_reviews': 0,
+                        'aggregated_neutral_reviews': 0,
                         'aggregated_answered_reviews_count': 0,
                         'aggregated_unanswered_reviews_count': 0,
                         'aggregated_avg_response_time': 0.0,
                         'aggregated_answered_reviews_percent': 0.0,
+                        'aggregated_reviews_with_rating_count': 0,
                     }
 
                     total_rating_sum = 0.0
@@ -852,10 +927,13 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                             total_rating_weight += reviews_cnt
 
                         combined['aggregated_reviews_count'] += reviews_cnt
+                        combined['aggregated_ratings_count'] += src_stats.get('aggregated_ratings_count', 0) or 0
                         combined['aggregated_positive_reviews'] += src_stats.get('aggregated_positive_reviews', 0) or 0
                         combined['aggregated_negative_reviews'] += src_stats.get('aggregated_negative_reviews', 0) or 0
+                        combined['aggregated_neutral_reviews'] += src_stats.get('aggregated_neutral_reviews', 0) or 0
                         combined['aggregated_answered_reviews_count'] += src_stats.get('aggregated_answered_reviews_count', 0) or 0
                         combined['aggregated_unanswered_reviews_count'] += src_stats.get('aggregated_unanswered_reviews_count', 0) or 0
+                        combined['aggregated_reviews_with_rating_count'] += src_stats.get('aggregated_reviews_with_rating_count', 0) or 0
 
                     if total_rating_weight > 0:
                         combined['aggregated_rating'] = round(total_rating_sum / total_rating_weight, 2)
@@ -886,6 +964,36 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
 
                 # Финальный статус с учётом возможной остановки пользователем
                 cards_count = len(all_cards)
+                
+                # Выводим итоговый результат с агрегированными метриками
+                if statistics and statistics.get('combined'):
+                    combined_stats = statistics['combined']
+                    logger.info("="*80)
+                    logger.info("ИТОГОВЫЙ РЕЗУЛЬТАТ ПАРСИНГА")
+                    logger.info("="*80)
+                    logger.info(f"Количество карточек: {combined_stats.get('total_cards_found', 0)}")
+                    logger.info(f"Общий рейтинг: {combined_stats.get('aggregated_rating', 0.0):.1f} {'★' * int(combined_stats.get('aggregated_rating', 0.0))}")
+                    logger.info(f"Всего отзывов: {combined_stats.get('aggregated_reviews_count', 0)}")
+                    logger.info(f"Всего оценок: {combined_stats.get('aggregated_ratings_count', combined_stats.get('aggregated_reviews_count', 0))}")
+                    logger.info(f"Отвечено на: {combined_stats.get('aggregated_answered_reviews_count', 0)}")
+                    if combined_stats.get('aggregated_avg_response_time', 0) > 0:
+                        logger.info(f"Средняя скорость ответа: {combined_stats.get('aggregated_avg_response_time', 0.0):.1f} дн.")
+                    logger.info(f"Негативных отзывов (1–2⭐): {combined_stats.get('aggregated_negative_reviews', 0)}")
+                    logger.info(f"Нейтральных отзывов (3⭐): {combined_stats.get('aggregated_neutral_reviews', 0)}")
+                    logger.info(f"Позитивных отзывов (4–5⭐): {combined_stats.get('aggregated_positive_reviews', 0)}")
+                    logger.info(f"Всего с оценкой: {combined_stats.get('aggregated_reviews_with_rating_count', combined_stats.get('aggregated_reviews_count', 0))}")
+                    logger.info("="*80)
+                    
+                    # Формируем итоговое сообщение для статуса
+                    final_message = (
+                        f"Парсинг завершен. "
+                        f"Карточек: {combined_stats.get('total_cards_found', 0)}, "
+                        f"Отзывов: {combined_stats.get('aggregated_reviews_count', 0)}, "
+                        f"Рейтинг: {combined_stats.get('aggregated_rating', 0.0):.1f}"
+                    )
+                else:
+                    final_message = f"Парсинг завершен. Найдено карточек: {cards_count}"
+                
                 if is_task_stopped(task_id):
                     update_task_status(
                         task_id,
@@ -902,7 +1010,7 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                     update_task_status(
                         task_id,
                         TaskStatus.COMPLETED,
-                        f"Парсинг завершен. Найдено карточек: {cards_count}",
+                        final_message,
                     )
             elif form_data.source == 'yandex':
                 all_cards: List[Dict[str, Any]] = []
@@ -938,12 +1046,15 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                                 "total_cards_found": 0,
                                 "aggregated_rating": 0.0,
                                 "aggregated_reviews_count": 0,
+                                "aggregated_ratings_count": 0,
                                 "aggregated_positive_reviews": 0,
                                 "aggregated_negative_reviews": 0,
+                                "aggregated_neutral_reviews": 0,
                                 "aggregated_answered_reviews_count": 0,
                                 "aggregated_unanswered_reviews_count": 0,
                                 "aggregated_avg_response_time": 0.0,
                                 "aggregated_answered_reviews_percent": 0.0,
+                                "aggregated_reviews_with_rating_count": 0,
                             }
                             total_rating_sum = 0.0
                             total_rating_weight = 0
@@ -958,12 +1069,15 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                                     total_rating_weight += reviews_cnt
 
                                 combined["aggregated_reviews_count"] += reviews_cnt
+                                combined["aggregated_ratings_count"] += s.get("aggregated_ratings_count", 0) or 0
                                 combined["aggregated_positive_reviews"] += s.get("aggregated_positive_reviews", 0) or 0
                                 combined["aggregated_negative_reviews"] += s.get("aggregated_negative_reviews", 0) or 0
+                                combined["aggregated_neutral_reviews"] += s.get("aggregated_neutral_reviews", 0) or 0
                                 answered = s.get("aggregated_answered_reviews_count", 0) or 0
                                 unanswered = s.get("aggregated_unanswered_reviews_count", 0) or 0
                                 combined["aggregated_answered_reviews_count"] += answered
                                 combined["aggregated_unanswered_reviews_count"] += unanswered
+                                combined["aggregated_reviews_with_rating_count"] += s.get("aggregated_reviews_with_rating_count", 0) or 0
 
                                 resp_time = s.get("aggregated_avg_response_time", 0.0) or 0.0
                                 if resp_time > 0 and answered > 0:
@@ -1004,12 +1118,44 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                         task.detailed_results = all_cards
                         task.statistics = stats
 
-                        msg = (
-                            f"Парсинг остановлен пользователем. Найдено карточек: {len(all_cards)}"
-                            if is_task_stopped(task_id)
-                            else f"Парсинг завершен. Найдено карточек: {len(all_cards)}"
-                        )
-                        update_task_status(task_id, TaskStatus.COMPLETED, msg)
+                        # Выводим итоговый результат с агрегированными метриками
+                        if stats and stats.get('combined'):
+                            combined_stats = stats['combined']
+                            logger.info("="*80)
+                            logger.info("ИТОГОВЫЙ РЕЗУЛЬТАТ ПАРСИНГА (Yandex)")
+                            logger.info("="*80)
+                            logger.info(f"Количество карточек: {combined_stats.get('total_cards_found', 0)}")
+                            logger.info(f"Общий рейтинг: {combined_stats.get('aggregated_rating', 0.0):.1f} {'★' * int(combined_stats.get('aggregated_rating', 0.0))}")
+                            logger.info(f"Всего отзывов: {combined_stats.get('aggregated_reviews_count', 0)}")
+                            logger.info(f"Всего оценок: {combined_stats.get('aggregated_ratings_count', combined_stats.get('aggregated_reviews_count', 0))}")
+                            logger.info(f"Отвечено на: {combined_stats.get('aggregated_answered_reviews_count', 0)}")
+                            if combined_stats.get('aggregated_avg_response_time', 0) > 0:
+                                logger.info(f"Средняя скорость ответа: {combined_stats.get('aggregated_avg_response_time', 0.0):.1f} дн.")
+                            logger.info(f"Негативных отзывов (1–2⭐): {combined_stats.get('aggregated_negative_reviews', 0)}")
+                            logger.info(f"Нейтральных отзывов (3⭐): {combined_stats.get('aggregated_neutral_reviews', 0)}")
+                            logger.info(f"Позитивных отзывов (4–5⭐): {combined_stats.get('aggregated_positive_reviews', 0)}")
+                            logger.info(f"Всего с оценкой: {combined_stats.get('aggregated_reviews_with_rating_count', combined_stats.get('aggregated_reviews_count', 0))}")
+                            logger.info("="*80)
+                            
+                            final_msg = (
+                                f"Парсинг остановлен пользователем. "
+                                f"Карточек: {combined_stats.get('total_cards_found', 0)}, "
+                                f"Отзывов: {combined_stats.get('aggregated_reviews_count', 0)}, "
+                                f"Рейтинг: {combined_stats.get('aggregated_rating', 0.0):.1f}"
+                                if is_task_stopped(task_id)
+                                else f"Парсинг завершен. "
+                                     f"Карточек: {combined_stats.get('total_cards_found', 0)}, "
+                                     f"Отзывов: {combined_stats.get('aggregated_reviews_count', 0)}, "
+                                     f"Рейтинг: {combined_stats.get('aggregated_rating', 0.0):.1f}"
+                            )
+                        else:
+                            final_msg = (
+                                f"Парсинг остановлен пользователем. Найдено карточек: {len(all_cards)}"
+                                if is_task_stopped(task_id)
+                                else f"Парсинг завершен. Найдено карточек: {len(all_cards)}"
+                            )
+                        
+                        update_task_status(task_id, TaskStatus.COMPLETED, final_msg)
                         
                         # Отправляем email уведомление
                         try:
@@ -1161,12 +1307,15 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                                 "total_cards_found": 0,
                                 "aggregated_rating": 0.0,
                                 "aggregated_reviews_count": 0,
+                                "aggregated_ratings_count": 0,
                                 "aggregated_positive_reviews": 0,
                                 "aggregated_negative_reviews": 0,
+                                "aggregated_neutral_reviews": 0,
                                 "aggregated_answered_reviews_count": 0,
                                 "aggregated_unanswered_reviews_count": 0,
                                 "aggregated_avg_response_time": 0.0,
                                 "aggregated_answered_reviews_percent": 0.0,
+                                "aggregated_reviews_with_rating_count": 0,
                             }
                             total_rating_sum = 0.0
                             total_rating_weight = 0
@@ -1181,12 +1330,15 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                                     total_rating_weight += reviews_cnt
 
                                 combined["aggregated_reviews_count"] += reviews_cnt
+                                combined["aggregated_ratings_count"] += s.get("aggregated_ratings_count", 0) or 0
                                 combined["aggregated_positive_reviews"] += s.get("aggregated_positive_reviews", 0) or 0
                                 combined["aggregated_negative_reviews"] += s.get("aggregated_negative_reviews", 0) or 0
+                                combined["aggregated_neutral_reviews"] += s.get("aggregated_neutral_reviews", 0) or 0
                                 answered = s.get("aggregated_answered_reviews_count", 0) or 0
                                 unanswered = s.get("aggregated_unanswered_reviews_count", 0) or 0
                                 combined["aggregated_answered_reviews_count"] += answered
                                 combined["aggregated_unanswered_reviews_count"] += unanswered
+                                combined["aggregated_reviews_with_rating_count"] += s.get("aggregated_reviews_with_rating_count", 0) or 0
 
                                 resp_time = s.get("aggregated_avg_response_time", 0.0) or 0.0
                                 if resp_time > 0 and answered > 0:
@@ -1227,10 +1379,38 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                         task.detailed_results = all_cards
                         task.statistics = stats
 
+                        # Выводим итоговый результат с агрегированными метриками
+                        if stats and stats.get('combined'):
+                            combined_stats = stats['combined']
+                            logger.info("="*80)
+                            logger.info("ИТОГОВЫЙ РЕЗУЛЬТАТ ПАРСИНГА (2GIS)")
+                            logger.info("="*80)
+                            logger.info(f"Количество карточек: {combined_stats.get('total_cards_found', 0)}")
+                            logger.info(f"Общий рейтинг: {combined_stats.get('aggregated_rating', 0.0):.1f} {'★' * int(combined_stats.get('aggregated_rating', 0.0))}")
+                            logger.info(f"Всего отзывов: {combined_stats.get('aggregated_reviews_count', 0)}")
+                            logger.info(f"Всего оценок: {combined_stats.get('aggregated_ratings_count', combined_stats.get('aggregated_reviews_count', 0))}")
+                            logger.info(f"Отвечено на: {combined_stats.get('aggregated_answered_reviews_count', 0)}")
+                            if combined_stats.get('aggregated_avg_response_time', 0) > 0:
+                                logger.info(f"Средняя скорость ответа: {combined_stats.get('aggregated_avg_response_time', 0.0):.1f} дн.")
+                            logger.info(f"Негативных отзывов (1–2⭐): {combined_stats.get('aggregated_negative_reviews', 0)}")
+                            logger.info(f"Нейтральных отзывов (3⭐): {combined_stats.get('aggregated_neutral_reviews', 0)}")
+                            logger.info(f"Позитивных отзывов (4–5⭐): {combined_stats.get('aggregated_positive_reviews', 0)}")
+                            logger.info(f"Всего с оценкой: {combined_stats.get('aggregated_reviews_with_rating_count', combined_stats.get('aggregated_reviews_count', 0))}")
+                            logger.info("="*80)
+                            
+                            final_msg = (
+                                f"Парсинг завершен. "
+                                f"Карточек: {combined_stats.get('total_cards_found', 0)}, "
+                                f"Отзывов: {combined_stats.get('aggregated_reviews_count', 0)}, "
+                                f"Рейтинг: {combined_stats.get('aggregated_rating', 0.0):.1f}"
+                            )
+                        else:
+                            final_msg = f"Парсинг завершен. Найдено карточек: {len(all_cards)}"
+                        
                         update_task_status(
                             task_id,
                             "COMPLETED",
-                            f"Парсинг завершен. Найдено карточек: {len(all_cards)}",
+                            final_msg,
                         )
                         
                         # Отправляем email уведомление
@@ -1617,7 +1797,15 @@ async def download_json_report(request: Request, task_id: str, filter_type: Opti
                 filtered_cards.append(filtered_card)
             cards_data = filtered_cards
         
+        # Подсчитываем количество карточек по источникам для информации
+        cards_by_source = {}
+        if cards_data:
+            for card in cards_data:
+                source = card.get('source', 'unknown')
+                cards_by_source[source] = cards_by_source.get(source, 0) + 1
+        
         # Формируем JSON отчет со всеми данными задачи
+        # ВАЖНО: При выборе обоих источников (both) данные от Yandex и 2GIS объединяются в один файл
         json_report = {
             "task_id": task.task_id,
             "status": task.status,
@@ -1627,8 +1815,12 @@ async def download_json_report(request: Request, task_id: str, filter_type: Opti
             "created_at": task.timestamp.isoformat() if task.timestamp else None,
             "start_time": task.start_time.isoformat() if task.start_time else None,
             "completed_at": task.end_time.isoformat() if task.end_time else None,
-            "statistics": task.statistics or {},
-            "cards": cards_data,
+            "statistics": task.statistics or {},  # Содержит "yandex", "2gis" и "combined" при выборе обоих источников
+            "cards": cards_data,  # Все карточки от обоих источников (с полем "source": "yandex" или "2gis")
+            "cards_summary": {  # Сводка по количеству карточек по источникам
+                "total": len(cards_data),
+                "by_source": cards_by_source
+            },
             "result_file": task.result_file,
             "progress": task.progress,
             "error": task.error,

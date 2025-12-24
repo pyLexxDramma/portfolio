@@ -424,13 +424,13 @@ class YandexParser(BaseParser):
             
             # ПРИОРИТЕТ 2: Fallback селекторы
             if not card_snippet.get('card_rating'):
-            rating_selectors = [
-                'div.business-summary-rating-badge-view__rating',  # Новый селектор для контейнера рейтинга
-                'span.business-summary-rating-badge-view__rating-text',  # Элементы с цифрами рейтинга
-                'div.search-placemark-view__rating',
-                'div[class*="business-rating-view"]',
-                'span[class*="rating"]',
-            ]
+                rating_selectors = [
+                    'div.business-summary-rating-badge-view__rating',  # Новый селектор для контейнера рейтинга
+                    'span.business-summary-rating-badge-view__rating-text',  # Элементы с цифрами рейтинга
+                    'div.search-placemark-view__rating',
+                    'div[class*="business-rating-view"]',
+                    'span[class*="rating"]',
+                ]
             # Сначала пробуем новый селектор с несколькими span элементами
             rating_container = card_details_soup.select_one('div.business-summary-rating-badge-view__rating')
             if rating_container:
@@ -474,16 +474,16 @@ class YandexParser(BaseParser):
                 
                 # ПРИОРИТЕТ 2: Fallback селекторы
                 if not website_detail:
-                website_selectors = [
-                    'a[itemprop="url"]',
-                    '.business-urls-view__link',  # Правильный селектор для Яндекс.Карт
-                    '.business-website-view__link',
-                    'a.business-urls-view__link',
-                    'a.business-website-view__link',
-                    'a[href^="http"]:not([href*="yandex.ru"]):not([href*="maps.yandex"])',
-                    'a[class*="website"]',
-                    'a[class*="site"]',
-                ]
+                    website_selectors = [
+                        'a[itemprop="url"]',
+                        '.business-urls-view__link',  # Правильный селектор для Яндекс.Карт
+                        '.business-website-view__link',
+                        'a.business-urls-view__link',
+                        'a.business-website-view__link',
+                        'a[href^="http"]:not([href*="yandex.ru"]):not([href*="maps.yandex"])',
+                        'a[class*="website"]',
+                        'a[class*="site"]',
+                    ]
                 for selector in website_selectors:
                     website_detail = card_details_soup.select_one(selector)
                     if website_detail:
@@ -660,8 +660,8 @@ class YandexParser(BaseParser):
                 card_snippet['card_reviews_count'] = reviews_count_from_page
                 logger.debug(f"Using reviews count from page structure: {reviews_count_from_page}")
             else:
-            actual_reviews_count = len(details) if details else reviews_data.get('reviews_count', 0)
-            card_snippet['card_reviews_count'] = actual_reviews_count
+                actual_reviews_count = len(details) if details else reviews_data.get('reviews_count', 0)
+                card_snippet['card_reviews_count'] = actual_reviews_count
             
             # Количество оценок - используем значение из структуры страницы (.business-rating-amount-view._summary)
             if ratings_count_from_page > 0:
@@ -783,7 +783,7 @@ class YandexParser(BaseParser):
                 card_rating_float = 0.0
 
             if card_rating_float > 0:
-            self._aggregated_data['total_rating_sum'] += card_rating_float
+                self._aggregated_data['total_rating_sum'] += card_rating_float
                 self._aggregated_data['total_rating_count'] += 1
 
             # Количество отзывов и оценок - для расчета среднего
@@ -925,7 +925,6 @@ class YandexParser(BaseParser):
                         logger.info(f"Found reviews count {reviews_count_total} using selector: .tabs-select-view__title._name_reviews .tabs-select-view__counter")
             
             # ПРИОРИТЕТ 2: Fallback селекторы
-            if reviews_count_total == 0:
             count_selectors = [
                 'div.tabs-select-view__counter',
                 '.search-business-snippet-view__link-reviews',
@@ -934,18 +933,19 @@ class YandexParser(BaseParser):
                 'div.business-header-view__reviews-count',
                 'a.business-review-view__rating',
             ]
-
-            for selector in count_selectors:
-                count_elements = soup_content.select(selector)
-                if count_elements:
-                    for elem in count_elements:
-                        reviews_count_text = elem.get_text(strip=True)
-                        matches = re.findall(r'(\d+)', reviews_count_text)
-                        if matches:
-                            potential_count = max([int(m) for m in matches])
-                            if potential_count > reviews_count_total:
-                                reviews_count_total = potential_count
-                                logger.info(f"Found reviews count {reviews_count_total} using selector: {selector}")
+            
+            if reviews_count_total == 0:
+                for selector in count_selectors:
+                    count_elements = soup_content.select(selector)
+                    if count_elements:
+                        for elem in count_elements:
+                            reviews_count_text = elem.get_text(strip=True)
+                            matches = re.findall(r'(\d+)', reviews_count_text)
+                            if matches:
+                                potential_count = max([int(m) for m in matches])
+                                if potential_count > reviews_count_total:
+                                    reviews_count_total = potential_count
+                                    logger.info(f"Found reviews count {reviews_count_total} using selector: {selector}")
 
             if reviews_count_total > 0:
                 logger.info(f"Total reviews found on page: {reviews_count_total}")
@@ -1037,6 +1037,7 @@ class YandexParser(BaseParser):
             elif current_url and '/reviews/' in current_url:
                 reviews_url = current_url
         
+        # Ищем ссылки пагинации
         pagination_links = soup_content.select('a[href*="/reviews/?page="], a[href*="/reviews?page="]')
         all_pages_urls = set()
         current_url = reviews_url if reviews_url else (self.driver.current_url if hasattr(self.driver, 'current_url') else '')
@@ -1047,12 +1048,56 @@ class YandexParser(BaseParser):
                     href = urllib.parse.urljoin("https://yandex.ru", href)
                 all_pages_urls.add(href)
         
+        # Пытаемся извлечь информацию о пагинации из JSON
+        total_pages = None
+        total_reviews = None
+        try:
+            json_scripts = soup_content.select('script[type="application/json"]')
+            for script in json_scripts:
+                try:
+                    script_text = script.string or script.get_text()
+                    if script_text:
+                        data = json.loads(script_text)
+                        # Ищем данные об отзывах в структуре JSON
+                        if 'search' in data and 'results' in data['search']:
+                            for result in data['search']['results']:
+                                if 'reviews' in result and 'params' in result['reviews']:
+                                    params = result['reviews']['params']
+                                    if 'totalPages' in params:
+                                        total_pages = params['totalPages']
+                                    if 'count' in params:
+                                        total_reviews = params['count']
+                                    break
+                except:
+                    pass
+        except Exception as e:
+            logger.debug(f"Could not extract pagination info from JSON: {e}")
+        
+        # Если нашли информацию о количестве страниц, генерируем URL для всех страниц
+        if total_pages and total_pages > 1 and not all_pages_urls:
+            base_url = current_url.rstrip('/').rstrip('/reviews')
+            if not base_url.endswith('/reviews'):
+                base_url = base_url + '/reviews/'
+            for page_num in range(2, total_pages + 1):
+                page_url = f"{base_url}?page={page_num}"
+                all_pages_urls.add(page_url)
+            logger.info(f"Generated {len(all_pages_urls)} pagination URLs from JSON data (totalPages: {total_pages}, totalReviews: {total_reviews})")
+        
         all_reviews = []
         pages_to_process = [current_url] if current_url and '/reviews/' in current_url else []
         if all_pages_urls:
-            # Увеличиваем количество обрабатываемых страниц пагинации
-            sorted_pages = sorted(all_pages_urls)
-            pages_to_process.extend(sorted_pages[:50])  # Увеличено с 10 до 50
+            # Сортируем страницы по номеру для последовательной обработки
+            def extract_page_number(url: str) -> int:
+                match = re.search(r'[?&]page=(\d+)', url)
+                if match:
+                    return int(match.group(1))
+                return 0
+            
+            sorted_pages = sorted(all_pages_urls, key=extract_page_number)
+            max_review_pages = 200  # Увеличено с 50 до 200 для поиска по стране
+            pages_to_process.extend(sorted_pages[:max_review_pages])
+            if len(sorted_pages) > max_review_pages:
+                logger.warning(f"⚠️  ВНИМАНИЕ: Найдено {len(sorted_pages)} страниц отзывов, но будет обработано только {max_review_pages}. Некоторые отзывы могут быть пропущены.")
             logger.info(f"Found {len(all_pages_urls)} pagination pages for Yandex reviews, will process up to 50 pages")
         
         if not pages_to_process and current_url:
@@ -1070,33 +1115,10 @@ class YandexParser(BaseParser):
                     self.driver.navigate(page_url)
                     time.sleep(3)  # Увеличено до 3 сек для загрузки страницы
                     
-                    # Прокручиваем страницу для загрузки всех отзывов на этой странице
-                    logger.info(f"Scrolling Yandex reviews page {page_url} to load all reviews...")
-                    scroll_iterations = 0
-                    max_scroll_iterations = 50
-                    last_review_count = 0
-                    no_change_count = 0
-                    
-                    while scroll_iterations < max_scroll_iterations:
-                        page_source_temp, soup_temp = self._get_page_source_and_soup()
-                        current_review_count = len(soup_temp.select('li.business-review-view, div.business-review-view, div.review-item-view'))
-                        
-                        if current_review_count > last_review_count:
-                            last_review_count = current_review_count
-                            no_change_count = 0
-                            logger.debug(f"Yandex page {page_url}: found {current_review_count} reviews after scroll iteration {scroll_iterations + 1}")
-                        else:
-                            no_change_count += 1
-                            if no_change_count >= 5:  # Останавливаемся, если 5 итераций без изменений
-                                logger.debug(f"Yandex page {page_url}: review count stable at {current_review_count}, stopping scroll")
-                                break
-                        
-                        # Прокручиваем страницу
-                        self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                        time.sleep(1.5)  # Ждем загрузки новых отзывов
-                        scroll_iterations += 1
-                    
-                    logger.info(f"Yandex page {page_url}: scroll completed, found {last_review_count} reviews")
+                    # Яндекс использует пагинацию, а не бесконечную прокрутку
+                    # Просто ждем загрузки страницы - все отзывы уже загружены
+                    logger.info(f"Waiting for Yandex reviews page {page_url} to load...")
+                    time.sleep(2)  # Дополнительное время для полной загрузки
 
                 # Перед парсингом отзывов разворачиваем все ответы организации,
                 # чтобы в DOM появились блоки с текстом и датой ответа.
@@ -1128,7 +1150,9 @@ class YandexParser(BaseParser):
 
                 page_source, soup_content = self._get_page_source_and_soup()
 
-                review_elements = soup_content.select('li, div.business-review-view, div.review-item-view')
+                # Используем правильный селектор для отзывов Яндекс.Карт
+                # div.business-review-view - основной селектор (находит 50 отзывов на странице)
+                review_elements = soup_content.select('div.business-review-view')
                 
                 for review_elem in review_elements:
                     if self._is_stopped():
@@ -1179,9 +1203,9 @@ class YandexParser(BaseParser):
                     
                     # ПРИОРИТЕТ 2: Fallback селекторы
                     if not author_name:
-                    author_elem = review_elem.select_one('a[href*="/user/"][class*="business-review-view__link"], a[href*="/user/"]')
-                    if author_elem:
-                        author_name = author_elem.get_text(strip=True)
+                        author_elem = review_elem.select_one('a[href*="/user/"][class*="business-review-view__link"], a[href*="/user/"]')
+                        if author_elem:
+                            author_name = author_elem.get_text(strip=True)
                     
                     if not author_name:
                         author_name_elem = review_elem.select_one('[class*="author"], [class*="user"]')
@@ -1213,32 +1237,32 @@ class YandexParser(BaseParser):
                             review_date = parse_russian_date(date_text)
                     else:
                         # ПРИОРИТЕТ 2: Fallback селекторы
-                    date_selectors = [
-                        'time[datetime]',
-                        'time',
-                        '[class*="date"]',
-                        '[class*="time"]',
-                    ]
-                    for selector in date_selectors:
-                        date_elem = review_elem.select_one(selector)
-                    if date_elem:
-                        date_text = date_elem.get_text(strip=True)
-                        datetime_attr = date_elem.get('datetime', '')
-                        if datetime_attr:
-                            try:
-                                review_date = datetime.fromisoformat(datetime_attr.replace('Z', '+00:00'))
-                            except:
-                                review_date = parse_russian_date(date_text)
-                        else:
-                            review_date = parse_russian_date(date_text)
+                        date_selectors = [
+                            'time[datetime]',
+                            'time',
+                            '[class*="date"]',
+                            '[class*="time"]',
+                        ]
+                        for selector in date_selectors:
+                            date_elem = review_elem.select_one(selector)
+                            if date_elem:
+                                date_text = date_elem.get_text(strip=True)
+                                datetime_attr = date_elem.get('datetime', '')
+                                if datetime_attr:
+                                    try:
+                                        review_date = datetime.fromisoformat(datetime_attr.replace('Z', '+00:00'))
+                                    except:
+                                        review_date = parse_russian_date(date_text)
+                                else:
+                                    review_date = parse_russian_date(date_text)
                                 break
                         
                         if not review_date:
-                        all_text = review_elem.get_text()
-                        date_match = re.search(r'(\d{1,2}\s+[а-яё]+\s+\d{4}|\d{1,2}\s+[а-яё]+)', all_text, re.IGNORECASE)
-                        if date_match:
-                            date_text = date_match.group(1)
-                            review_date = parse_russian_date(date_text)
+                            all_text = review_elem.get_text()
+                            date_match = re.search(r'(\d{1,2}\s+[а-яё]+\s+\d{4}|\d{1,2}\s+[а-яё]+)', all_text, re.IGNORECASE)
+                            if date_match:
+                                date_text = date_match.group(1)
+                                review_date = parse_russian_date(date_text)
                     
                     rating_value = 0.0
 
@@ -1369,34 +1393,34 @@ class YandexParser(BaseParser):
                     
                     # ПРИОРИТЕТ 2: Fallback селекторы
                     if not review_text or len(review_text) < 10:
-                    review_text_selectors = [
-                        'div.business-review-view__body-text',
-                        '.review-item-view__comment-text',
-                        'div[class*="review-text"]',
-                        'div[class*="comment-text"]',
-                        'div[class*="body-text"]',
-                        'p[class*="review-text"]',
-                        'p[class*="comment"]',
-                        'div[class*="text"][class*="review"]',
-                        'div[class*="content"][class*="review"]',
-                        'p[class*="review"]',
-                    ]
-                    
-                    for text_selector in review_text_selectors:
-                        text_elements = review_elem.select(text_selector)
-                        for text_element in text_elements:
+                        review_text_selectors = [
+                            'div.business-review-view__body-text',
+                            '.review-item-view__comment-text',
+                            'div[class*="review-text"]',
+                            'div[class*="comment-text"]',
+                            'div[class*="body-text"]',
+                            'p[class*="review-text"]',
+                            'p[class*="comment"]',
+                            'div[class*="text"][class*="review"]',
+                            'div[class*="content"][class*="review"]',
+                            'p[class*="review"]',
+                        ]
+                        
+                        for text_selector in review_text_selectors:
+                            text_elements = review_elem.select(text_selector)
+                            for text_element in text_elements:
                                 # Проверяем, что это не блок ответа компании
                                 if text_element.select_one('.business-review-comment-content, [class*="comment-content"], [class*="response"]'):
                                     continue
-                            review_text = text_element.get_text(separator=' ', strip=True)
-                            review_text = ' '.join(review_text.split())
+                                review_text = text_element.get_text(separator=' ', strip=True)
+                                review_text = ' '.join(review_text.split())
                                 # Удаляем префикс "Официальный ответ" если он остался
                                 review_text = re.sub(r'^Официальный ответ\s+\d{1,2}\s+[а-яё]+\s*', '', review_text, flags=re.IGNORECASE)
                                 review_text = review_text.strip()
+                                if review_text and len(review_text) > 10:
+                                    break
                             if review_text and len(review_text) > 10:
                                 break
-                        if review_text and len(review_text) > 10:
-                            break
                     
                     if not review_text or len(review_text) < 10:
                         # Создаем клон элемента для безопасного удаления блока ответа
@@ -1523,8 +1547,8 @@ class YandexParser(BaseParser):
                     # ПРИОРИТЕТ 2: Fallback селекторы
                     if not has_response:
                         answer_elem = review_elem.select_one('[class*="answer"], [class*="reply"], [class*="response"]')
-                    if answer_elem or 'ответ организации' in review_elem.get_text().lower():
-                        has_response = True
+                        if answer_elem or 'ответ организации' in review_elem.get_text().lower():
+                            has_response = True
                         response_elem = review_elem.select_one('[class*="answer"], [class*="reply"], [class*="response"]')
                         if response_elem:
                             response_text_elem = response_elem.select_one('[class*="text"], [class*="content"]')
@@ -1536,22 +1560,22 @@ class YandexParser(BaseParser):
                             response_date_elem = response_elem.select_one('[class*="date"], time')
                             if response_date_elem:
                                 response_date_text = response_date_elem.get_text(strip=True)
-                                    # Парсим дату ответа с учетом года отзыва
-                                    if review_date:
-                                        response_date = parse_russian_date(response_date_text, current_year=review_date.year)
-                                        # Если дата ответа без года, определяем год на основе года отзыва
-                                        if response_date and review_date and not re.search(r'\d{4}', response_date_text):
-                                            # Определяем год ответа: если ответ пришел позже отзыва в том же году - используем год отзыва
-                                            # Если ответ пришел раньше отзыва (переход через границу года) - используем следующий год
-                                            if response_date.month < review_date.month or (response_date.month == review_date.month and response_date.day < review_date.day):
-                                                # Ответ пришел в следующем году
-                                                response_date = response_date.replace(year=review_date.year + 1)
-                                            else:
-                                                # Ответ пришел в том же году
-                                                response_date = response_date.replace(year=review_date.year)
-                                    else:
-                                        # Если нет даты отзыва, используем текущий год
-                                response_date = parse_russian_date(response_date_text)
+                                # Парсим дату ответа с учетом года отзыва
+                                if review_date:
+                                    response_date = parse_russian_date(response_date_text, current_year=review_date.year)
+                                    # Если дата ответа без года, определяем год на основе года отзыва
+                                    if response_date and review_date and not re.search(r'\d{4}', response_date_text):
+                                        # Определяем год ответа: если ответ пришел позже отзыва в том же году - используем год отзыва
+                                        # Если ответ пришел раньше отзыва (переход через границу года) - используем следующий год
+                                        if response_date.month < review_date.month or (response_date.month == review_date.month and response_date.day < review_date.day):
+                                            # Ответ пришел в следующем году
+                                            response_date = response_date.replace(year=review_date.year + 1)
+                                        else:
+                                            # Ответ пришел в том же году
+                                            response_date = response_date.replace(year=review_date.year)
+                                else:
+                                    # Если нет даты отзыва, используем текущий год
+                                    response_date = parse_russian_date(response_date_text)
                     
                     review_key = f"{author_name}_{date_text}_{rating_value}_{hashlib.md5(review_text[:50].encode()).hexdigest()[:10]}"
                     if review_key in seen_review_keys:
@@ -2060,10 +2084,13 @@ class YandexParser(BaseParser):
             
             pages_to_process = [search_query_url]
             if all_pages_urls:
-                # Увеличиваем количество обрабатываемых страниц пагинации
+                # Увеличиваем количество обрабатываемых страниц пагинации для поиска по стране
                 sorted_pages = sorted(all_pages_urls)
-                pages_to_process.extend(sorted_pages[:50])  # Увеличено с 20 до 50
-                logger.info(f"Found {len(all_pages_urls)} pagination pages for Yandex cards, will process up to 50 pages")
+                max_pages = 200  # Увеличено с 50 до 200 для поиска по стране
+                pages_to_process.extend(sorted_pages[:max_pages])
+                logger.info(f"Found {len(all_pages_urls)} pagination pages for Yandex cards, will process up to {max_pages} pages")
+                if len(all_pages_urls) > max_pages:
+                    logger.warning(f"⚠️  ВНИМАНИЕ: Найдено {len(all_pages_urls)} страниц поиска, но будет обработано только {max_pages}. Некоторые карточки могут быть пропущены.")
             
             for page_num, page_url in enumerate(pages_to_process, start=1):
                 if self._is_stopped():
@@ -2390,10 +2417,10 @@ class YandexParser(BaseParser):
                 ]
                 for selector in website_selectors:
                     website_elem = soup.select_one(selector)
-                if website_elem:
-                    website = website_elem.get('href', '')
-                    if website and 'yandex.ru' not in website.lower() and 'maps.yandex' not in website.lower() and '2gis.ru' not in website.lower():
-                        break
+                    if website_elem:
+                        website = website_elem.get('href', '')
+                        if website and 'yandex.ru' not in website.lower() and 'maps.yandex' not in website.lower() and '2gis.ru' not in website.lower():
+                            break
             return website
         except Exception as e:
             logger.warning(f"Error during quick website extraction for {card_url}: {e}")
