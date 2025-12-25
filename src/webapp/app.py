@@ -504,6 +504,18 @@ def _run_parser_task(parser_class, url: str, task_id: str, source: str, company_
         logger.info(
             f"Task {task_id} ({source}): Parse completed, result keys: {list(result.keys()) if result else 'None'}"
         )
+        
+        # Детальное логирование результата парсинга
+        if result and isinstance(result, dict):
+            cards_data = result.get('cards_data', [])
+            aggregated_info = result.get('aggregated_info')
+            cards_count = len(cards_data) if cards_data else 0
+            logger.info(f"Task {task_id} ({source}): Result details - cards_data type: {type(cards_data)}, cards_count: {cards_count}")
+            logger.info(f"Task {task_id} ({source}): Result details - has aggregated_info: {aggregated_info is not None}")
+            if aggregated_info:
+                logger.info(f"Task {task_id} ({source}): aggregated_info - total_cards: {aggregated_info.get('total_cards_found', 0)}, reviews: {aggregated_info.get('aggregated_reviews_count', 0)}")
+        else:
+            logger.warning(f"Task {task_id} ({source}): Result is None or not a dict!")
 
         # Если задачу остановили пользователем, помечаем это явно в прогрессе
         if is_task_stopped(task_id):
@@ -1103,20 +1115,25 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                         stats["yandex"] = _combine_stats_single(yandex_stats_list)
                         stats["combined"] = stats["yandex"]
 
-                    if all_cards:
-                        writer = CSVWriter(settings=settings)
-                        results_dir = settings.app_config.writer.output_dir
-                        os.makedirs(results_dir, exist_ok=True)
-                        writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
+                    logger.info(f"Task {task_id}: Yandex multi-city - all_cards count: {len(all_cards)}, stats keys: {list(stats.keys()) if stats else 'empty'}")
+                    
+                    # Сохраняем результаты даже если all_cards пустой, но есть статистика
+                    if all_cards or stats:
+                        if all_cards:
+                            writer = CSVWriter(settings=settings)
+                            results_dir = settings.app_config.writer.output_dir
+                            os.makedirs(results_dir, exist_ok=True)
+                            writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
 
-                        with writer:
-                            for card in all_cards:
-                                writer.write(card)
+                            with writer:
+                                for card in all_cards:
+                                    writer.write(card)
 
                         task = active_tasks[task_id]
-                        task.result_file = form_data.output_filename
+                        task.result_file = form_data.output_filename if all_cards else ""
                         task.detailed_results = all_cards
                         task.statistics = stats
+                        logger.info(f"Task {task_id}: Saved Yandex multi-city results - cards: {len(all_cards)}, stats: {stats}")
 
                         # Выводим итоговый результат с агрегированными метриками
                         if stats and stats.get('combined'):
@@ -1211,31 +1228,41 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                             )
                         except Exception as email_err:
                             logger.warning(f"Failed to send email notification: {email_err}")
-                    elif result and result.get("cards_data"):
-                        writer = CSVWriter(settings=settings)
-                        results_dir = settings.app_config.writer.output_dir
-                        os.makedirs(results_dir, exist_ok=True)
-                        writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
+                    elif result:
+                        # Сохраняем результаты даже если cards_data пустой, но aggregated_info есть
+                        cards_data = result.get("cards_data", [])
+                        aggregated_info = result.get("aggregated_info")
+                        
+                        logger.info(f"Task {task_id}: Saving results - cards: {len(cards_data) if cards_data else 0}, has aggregated_info: {aggregated_info is not None}")
+                        
+                        if cards_data:
+                            writer = CSVWriter(settings=settings)
+                            results_dir = settings.app_config.writer.output_dir
+                            os.makedirs(results_dir, exist_ok=True)
+                            writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
 
-                        with writer:
-                            for card in result["cards_data"]:
-                                writer.write(card)
+                            with writer:
+                                for card in cards_data:
+                                    writer.write(card)
 
                         task = active_tasks[task_id]
-                        task.result_file = form_data.output_filename
-                        task.detailed_results = result["cards_data"]
+                        task.result_file = form_data.output_filename if cards_data else ""
+                        task.detailed_results = cards_data
 
                         # Сохраняем агрегированную информацию, чтобы она отображалась в веб-отчёте и PDF
                         stats = {}
-                        if result.get("aggregated_info"):
-                            stats["yandex"] = result["aggregated_info"]
-                            stats["combined"] = result["aggregated_info"]
+                        if aggregated_info:
+                            stats["yandex"] = aggregated_info
+                            stats["combined"] = aggregated_info
+                            logger.info(f"Task {task_id}: Saved aggregated_info - cards: {aggregated_info.get('total_cards_found', 0)}, reviews: {aggregated_info.get('aggregated_reviews_count', 0)}")
+                        else:
+                            logger.warning(f"Task {task_id}: No aggregated_info in result!")
                         task.statistics = stats
 
                         msg = (
-                            f"Парсинг остановлен пользователем. Найдено карточек: {len(result['cards_data'])}"
+                            f"Парсинг остановлен пользователем. Найдено карточек: {len(cards_data)}"
                             if is_task_stopped(task_id)
-                            else f"Парсинг завершен. Найдено карточек: {len(result['cards_data'])}"
+                            else f"Парсинг завершен. Найдено карточек: {len(cards_data)}"
                         )
                         update_task_status(task_id, TaskStatus.COMPLETED, msg)
                         
@@ -1364,20 +1391,25 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                         stats["2gis"] = _combine_stats_single_gis(gis_stats_list)
                         stats["combined"] = stats["2gis"]
 
-                    if all_cards:
-                        writer = CSVWriter(settings=settings)
-                        results_dir = settings.app_config.writer.output_dir
-                        os.makedirs(results_dir, exist_ok=True)
-                        writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
+                    logger.info(f"Task {task_id}: 2GIS multi-city - all_cards count: {len(all_cards)}, stats keys: {list(stats.keys()) if stats else 'empty'}")
+                    
+                    # Сохраняем результаты даже если all_cards пустой, но есть статистика
+                    if all_cards or stats:
+                        if all_cards:
+                            writer = CSVWriter(settings=settings)
+                            results_dir = settings.app_config.writer.output_dir
+                            os.makedirs(results_dir, exist_ok=True)
+                            writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
 
-                        with writer:
-                            for card in all_cards:
-                                writer.write(card)
+                            with writer:
+                                for card in all_cards:
+                                    writer.write(card)
 
                         task = active_tasks[task_id]
-                        task.result_file = form_data.output_filename
+                        task.result_file = form_data.output_filename if all_cards else ""
                         task.detailed_results = all_cards
                         task.statistics = stats
+                        logger.info(f"Task {task_id}: Saved 2GIS multi-city results - cards: {len(all_cards)}, stats: {stats}")
 
                         # Выводим итоговый результат с агрегированными метриками
                         if stats and stats.get('combined'):
@@ -1469,30 +1501,40 @@ async def start_parsing(request: Request, form_data: ParsingForm = Depends(Parsi
                             )
                         except Exception as email_err:
                             logger.warning(f"Failed to send email notification: {email_err}")
-                    elif result and result.get("cards_data"):
-                        writer = CSVWriter(settings=settings)
-                        results_dir = settings.app_config.writer.output_dir
-                        os.makedirs(results_dir, exist_ok=True)
-                        writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
+                    elif result:
+                        # Сохраняем результаты даже если cards_data пустой, но aggregated_info есть
+                        cards_data = result.get("cards_data", [])
+                        aggregated_info = result.get("aggregated_info")
+                        
+                        logger.info(f"Task {task_id}: Saving 2GIS results - cards: {len(cards_data) if cards_data else 0}, has aggregated_info: {aggregated_info is not None}")
+                        
+                        if cards_data:
+                            writer = CSVWriter(settings=settings)
+                            results_dir = settings.app_config.writer.output_dir
+                            os.makedirs(results_dir, exist_ok=True)
+                            writer.set_file_path(os.path.join(results_dir, form_data.output_filename))
 
-                        with writer:
-                            for card in result["cards_data"]:
-                                writer.write(card)
+                            with writer:
+                                for card in cards_data:
+                                    writer.write(card)
 
                         task = active_tasks[task_id]
-                        task.result_file = form_data.output_filename
-                        task.detailed_results = result["cards_data"]
+                        task.result_file = form_data.output_filename if cards_data else ""
+                        task.detailed_results = cards_data
 
                         stats = {}
-                        if result.get("aggregated_info"):
-                            stats["2gis"] = result["aggregated_info"]
-                            stats["combined"] = result["aggregated_info"]
+                        if aggregated_info:
+                            stats["2gis"] = aggregated_info
+                            stats["combined"] = aggregated_info
+                            logger.info(f"Task {task_id}: Saved 2GIS aggregated_info - cards: {aggregated_info.get('total_cards_found', 0)}, reviews: {aggregated_info.get('aggregated_reviews_count', 0)}")
+                        else:
+                            logger.warning(f"Task {task_id}: No aggregated_info in 2GIS result!")
                         task.statistics = stats
 
                         update_task_status(
                             task_id,
                             "COMPLETED",
-                            f"Парсинг завершен. Найдено карточек: {len(result['cards_data'])}",
+                            f"Парсинг завершен. Найдено карточек: {len(cards_data)}",
                         )
                         
                         # Отправляем email уведомление
