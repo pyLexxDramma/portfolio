@@ -83,8 +83,8 @@
         </div>
         
         <!-- Уведомление о возможных несоответствиях с реальными страницами -->
-        {% if task.status == 'COMPLETED' %}
-        <div id="data-verification-notice" class="data-verification-notice" style="margin-top: 20px; padding: 15px; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; font-size: 0.95em; position: relative;">
+        {% if task and task.status == 'COMPLETED' %}
+        <div id="data-verification-notice" class="data-verification-notice" data-task-id="{{ task.task_id if task else '' }}" style="margin-top: 20px; padding: 15px; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; font-size: 0.95em; position: relative;">
             <div style="display: flex; align-items: start; gap: 10px;">
                 <div style="font-size: 1.5em; line-height: 1;">⚠️</div>
                 <div style="flex: 1;">
@@ -1046,19 +1046,25 @@
     window.hideDataNotice = function() {
         const notice = document.getElementById('data-verification-notice');
         if (notice) {
+            const taskId = notice.getAttribute('data-task-id');
+            if (taskId) {
+                // Сохраняем в localStorage, что уведомление скрыто для конкретной задачи
+                localStorage.setItem('data_notice_hidden_' + taskId, 'true');
+            }
             notice.style.display = 'none';
-            // Сохраняем в localStorage, что уведомление скрыто
-            localStorage.setItem('data_notice_hidden', 'true');
         }
     };
     
-    // Проверяем, было ли уведомление скрыто ранее
-    if (localStorage.getItem('data_notice_hidden') === 'true') {
+    // Проверяем, было ли уведомление скрыто ранее для этой конкретной задачи
+    (function() {
         const notice = document.getElementById('data-verification-notice');
         if (notice) {
-            notice.style.display = 'none';
+            const taskId = notice.getAttribute('data-task-id');
+            if (taskId && localStorage.getItem('data_notice_hidden_' + taskId) === 'true') {
+                notice.style.display = 'none';
+            }
         }
-    }
+    })();
     
     // Обновление длительности в реальном времени для активных задач с учетом паузы
     {% if task.start_time and not task.end_time %}

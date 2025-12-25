@@ -216,6 +216,22 @@
         <button type="submit">Поехали!</button>
     </form>
 
+    <!-- Модальное окно подтверждения данных перед запуском парсинга -->
+    <div id="confirmation_modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; overflow-y: auto;">
+        <div style="position: relative; max-width: 700px; margin: 40px auto; background: white; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); padding: 30px; max-height: 90vh; overflow-y: auto;">
+            <h2 style="margin-top: 0; margin-bottom: 20px; color: #333; font-size: 1.8em; border-bottom: 3px solid #667eea; padding-bottom: 10px;">📋 Подтверждение данных для парсинга</h2>
+            
+            <div id="confirmation_data" style="line-height: 1.8; color: #444; margin-bottom: 25px;">
+                <!-- Данные будут заполнены JavaScript -->
+            </div>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee; display: flex; gap: 15px; justify-content: flex-end;">
+                <button id="edit_data_btn" style="padding: 12px 30px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 1em; font-weight: 600; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#5a6268';" onmouseout="this.style.background='#6c757d';">Редактировать введенные данные</button>
+                <button id="start_parsing_btn" style="padding: 12px 30px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 1em; font-weight: 600; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#5568d3';" onmouseout="this.style.background='#667eea';">Запустить парсинг</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Базовый префикс для API и статики (например, /parser)
         window.ROOT_PATH = "{{ url_prefix or '' }}";
@@ -770,6 +786,8 @@
 
         // Перед отправкой формы нормализуем часть полей и собираем выбранные города в скрытое поле
         document.getElementById('parse_form').addEventListener('submit', function (event) {
+            event.preventDefault(); // Предотвращаем стандартную отправку формы
+            
             const scope = searchScopeSelect.value;
             const hiddenInput = document.getElementById('cities_input');
 
@@ -863,10 +881,13 @@
                 if (hiddenInput) {
                     hiddenInput.value = '';
                 }
-                return;
+            } else {
+                // На всякий случай синхронизируем скрытое поле перед отправкой
+                updateSelectedCitiesSummary();
             }
-            // На всякий случай синхронизируем скрытое поле перед отправкой
-            updateSelectedCitiesSummary();
+            
+            // Показываем модальное окно подтверждения
+            showConfirmationModal();
         });
 
         // Автодополнение для поля города (режим "по городу")
@@ -1319,21 +1340,180 @@ function closeDetailedInstructions() {
     document.body.style.overflow = 'auto'; // Возвращаем прокрутку
 }
 
-// Закрытие по клику вне модального окна
+// Функция для показа модального окна подтверждения
+function showConfirmationModal() {
+    const modal = document.getElementById('confirmation_modal');
+    const dataDiv = document.getElementById('confirmation_data');
+    
+    // Собираем данные из формы
+    const companyName = document.getElementById('company_name').value;
+    const companySite = document.getElementById('company_site').value;
+    const source = document.getElementById('source').value;
+    const email = document.getElementById('email').value;
+    const searchScope = document.getElementById('search_scope').value;
+    const location = document.getElementById('location').value;
+    const citiesInput = document.getElementById('cities_input');
+    const cities = citiesInput ? citiesInput.value : '';
+    const outputFilename = document.getElementById('output_filename').value;
+    
+    // Форматируем источник
+    let sourceText = '';
+    if (source === 'both') {
+        sourceText = 'Оба источника (Яндекс + 2GIS)';
+    } else if (source === 'yandex') {
+        sourceText = 'Яндекс.Карты';
+    } else if (source === '2gis') {
+        sourceText = '2GIS';
+    } else {
+        sourceText = source;
+    }
+    
+    // Форматируем область поиска
+    let scopeText = '';
+    let locationText = '';
+    if (searchScope === 'city') {
+        scopeText = 'Город';
+        locationText = location || 'Не указан';
+    } else if (searchScope === 'country') {
+        scopeText = 'Страна / общий поиск';
+        const citiesList = cities ? cities.split(';').filter(c => c.trim()).map(c => c.trim()) : [];
+        if (citiesList.length > 0) {
+            locationText = citiesList.length + ' городов: ' + citiesList.slice(0, 5).join(', ') + (citiesList.length > 5 ? '...' : '');
+        } else {
+            locationText = 'Все 200 городов (по умолчанию)';
+        }
+    } else {
+        scopeText = searchScope || 'Не указано';
+    }
+    
+    // Формируем HTML с данными
+    dataDiv.innerHTML = `
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 15px;">
+            <h3 style="margin-top: 0; margin-bottom: 15px; color: #667eea; font-size: 1.2em;">Настройки парсинга</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 10px; font-weight: 600; color: #495057; width: 40%;">Компания:</td>
+                    <td style="padding: 10px; color: #212529;">${escapeHtml(companyName)}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 10px; font-weight: 600; color: #495057;">Сайт:</td>
+                    <td style="padding: 10px; color: #212529;">${escapeHtml(companySite)}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 10px; font-weight: 600; color: #495057;">Источник:</td>
+                    <td style="padding: 10px; color: #212529;">${escapeHtml(sourceText)}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 10px; font-weight: 600; color: #495057;">Email:</td>
+                    <td style="padding: 10px; color: #212529;">${escapeHtml(email)}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 10px; font-weight: 600; color: #495057;">Область поиска:</td>
+                    <td style="padding: 10px; color: #212529;">${escapeHtml(scopeText)}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 10px; font-weight: 600; color: #495057;">${searchScope === 'city' ? 'Город:' : 'Города:'}</td>
+                    <td style="padding: 10px; color: #212529;">${escapeHtml(locationText)}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; font-weight: 600; color: #495057;">Имя файла отчета:</td>
+                    <td style="padding: 10px; color: #212529;">${escapeHtml(outputFilename || 'report.csv')}</td>
+                </tr>
+            </table>
+        </div>
+        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 4px; margin-top: 15px;">
+            <p style="margin: 0; color: #856404; line-height: 1.6;">
+                <strong>⚠️ Внимание:</strong> Проверьте правильность введенных данных. После запуска парсинга изменить параметры будет невозможно.
+            </p>
+        </div>
+    `;
+    
+    // Показываем модальное окно
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+// Функция для экранирования HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Функция для закрытия модального окна подтверждения
+function closeConfirmationModal() {
+    const modal = document.getElementById('confirmation_modal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Обработчики кнопок модального окна
 document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('detailed_instructions_modal');
-    if (modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
+    const detailedModal = document.getElementById('detailed_instructions_modal');
+    const confirmationModal = document.getElementById('confirmation_modal');
+    const editBtn = document.getElementById('edit_data_btn');
+    const startBtn = document.getElementById('start_parsing_btn');
+    
+    // Модальное окно подробных инструкций
+    if (detailedModal) {
+        detailedModal.addEventListener('click', function(e) {
+            if (e.target === detailedModal) {
                 closeDetailedInstructions();
             }
         });
     }
-
+    
+    // Модальное окно подтверждения
+    if (confirmationModal) {
+        confirmationModal.addEventListener('click', function(e) {
+            if (e.target === confirmationModal) {
+                closeConfirmationModal();
+            }
+        });
+    }
+    
+    // Кнопка "Редактировать введенные данные"
+    if (editBtn) {
+        editBtn.addEventListener('click', function() {
+            closeConfirmationModal();
+        });
+    }
+    
+    // Кнопка "Запустить парсинг"
+    if (startBtn) {
+        startBtn.addEventListener('click', function() {
+            // Отправляем форму напрямую, минуя обработчик submit
+            const form = document.getElementById('parse_form');
+            // Создаем временную форму для отправки
+            const tempForm = document.createElement('form');
+            tempForm.method = 'POST';
+            tempForm.action = form.action;
+            
+            // Копируем все поля из оригинальной формы
+            Array.from(form.elements).forEach(function(element) {
+                if (element.name && element.type !== 'submit') {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = element.name;
+                    input.value = element.value;
+                    tempForm.appendChild(input);
+                }
+            });
+            
+            document.body.appendChild(tempForm);
+            tempForm.submit();
+        });
+    }
+    
     // Закрытие по клавише Escape
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal && modal.style.display === 'block') {
-            closeDetailedInstructions();
+        if (e.key === 'Escape') {
+            if (detailedModal && detailedModal.style.display === 'block') {
+                closeDetailedInstructions();
+            }
+            if (confirmationModal && confirmationModal.style.display === 'block') {
+                closeConfirmationModal();
+            }
         }
     });
 });
