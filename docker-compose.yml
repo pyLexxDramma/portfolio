@@ -1,0 +1,18 @@
+services:
+  unified-parser:
+    build: .
+    container_name: unified-parser
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./output:/app/output
+      - ./config:/app/config
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONIOENCODING=utf-8
+      - DISPLAY=:99
+      - URL_PREFIX=/parser
+    restart: unless-stopped
+    shm_size: '2gb'  # Увеличиваем shared memory для Chrome
+

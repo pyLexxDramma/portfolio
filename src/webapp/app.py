@@ -1659,13 +1659,19 @@ async def get_task(request: Request, task_id: str):
                 detailed_count = len(card.get("detailed_reviews", []))
                 
                 # Проверка: количество детальных отзывов должно соответствовать количеству отзывов в карточке
+                # Показываем предупреждение только если разница значительная (более 10% или более 20 отзывов)
+                # Это нормально, если на странице отображается общее количество отзывов, а парсер собирает только отзывы с текстом
                 if detailed_count != card_reviews and card_reviews > 0:
-                    data_verification_warnings.append({
-                        "type": "detailed_reviews_mismatch",
-                        "source": source,
-                        "card_name": card_name,
-                        "message": f"Количество детальных отзывов ({detailed_count}) не совпадает с общим количеством отзывов ({card_reviews}) в карточке"
-                    })
+                    diff = abs(card_reviews - detailed_count)
+                    diff_percent = (diff / card_reviews) * 100 if card_reviews > 0 else 0
+                    # Предупреждаем только если разница > 10% И > 20 отзывов
+                    if diff_percent > 10 and diff > 20:
+                        data_verification_warnings.append({
+                            "type": "detailed_reviews_mismatch",
+                            "source": source,
+                            "card_name": card_name,
+                            "message": f"Количество детальных отзывов ({detailed_count}) не совпадает с общим количеством отзывов ({card_reviews}) в карточке ({source})"
+                        })
                 
                 # Проверка: если есть несколько карточек одного источника, проверяем соответствие агрегированных данных
                 source_cards = cards_by_source.get(source, [])
@@ -1775,8 +1781,9 @@ async def get_all_tasks():
 
 @app.get("/tasks/{task_id}/download-pdf")
 async def download_pdf_report(request: Request, task_id: str):
+    url_prefix = get_url_prefix(request)
     if not check_auth(request):
-        return RedirectResponse(url="/login", status_code=302)
+        return RedirectResponse(url=f"{url_prefix}/login", status_code=302)
 
     task = active_tasks.get(task_id)
     if not task:
@@ -1840,8 +1847,9 @@ async def download_json_report(request: Request, task_id: str, filter_type: Opti
     Параметры:
     - filter_type: 'answered' - только отзывы с ответами, 'unanswered' - только отзывы без ответов, None - все отзывы
     """
+    url_prefix = get_url_prefix(request)
     if not check_auth(request):
-        return RedirectResponse(url="/login", status_code=302)
+        return RedirectResponse(url=f"{url_prefix}/login", status_code=302)
 
     task = active_tasks.get(task_id)
     if not task:

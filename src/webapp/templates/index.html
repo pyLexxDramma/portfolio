@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web Scraper</title>
-    <link rel="stylesheet" href="{{ (url_prefix or '') }}/static/style.css?v=3">
+    <link rel="stylesheet" href="/parser/static/style.css?v=3">
 </head>
 <body>
 <div class="container">
@@ -234,7 +234,7 @@
 
     <script>
         // Базовый префикс для API и статики (например, /parser)
-        window.ROOT_PATH = "{{ url_prefix or '' }}";
+        window.ROOT_PATH = "{{ url_prefix or '/parser' }}";
 
         // Предварительно выбранные города из последнего заполнения формы
         const PRESELECTED_CITIES_STR = "{{ last_form.cities if last_form and last_form.cities else '' }}";
