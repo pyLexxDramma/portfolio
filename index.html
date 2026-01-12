@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Портфолио Алексея Темникова - Fullstack Python Developer">
+    <title>Алексей Темников - Fullstack Python Developer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --accent-color: #3b82f6;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --bg-light: #f9fafb;
+            --bg-white: #ffffff;
+            --border-color: #e5e7eb;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background-color: var(--bg-light);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 60px 0;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+        }
+
+        header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        header .subtitle {
+            font-size: 1.5rem;
+            opacity: 0.95;
+            margin-bottom: 20px;
+        }
+
+        .profile-photo {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            margin: 0 auto 30px;
+            display: block;
+            object-fit: cover;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        header .social-links {
+            margin-top: 30px;
+        }
+
+        header .social-links a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 1.1rem;
+            transition: opacity 0.3s;
+        }
+
+        header .social-links a:hover {
+            opacity: 0.8;
+        }
+
+        /* Navigation */
+        nav {
+            background: var(--bg-white);
+            padding: 20px 0;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+
+        nav a {
+            color: var(--text-dark);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--primary-color);
+        }
+
+        /* Sections */
+        section {
+            padding: 60px 0;
+            background: var(--bg-white);
+            margin-bottom: 2px;
+        }
+
+        section:nth-child(even) {
+            background: var(--bg-light);
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 40px;
+            color: var(--text-dark);
+            text-align: center;
+            position: relative;
+            padding-bottom: 20px;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: var(--primary-color);
+            border-radius: 2px;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+        }
+
+        /* About */
+        .about-content {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-light);
+        }
+
+        /* Skills */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .skill-category {
+            background: var(--bg-white);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .skill-category:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .skill-category h3 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .skill-tag {
+            background: var(--bg-light);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Projects */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .project-card {
+            background: var(--bg-white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .project-card-content {
+            padding: 25px;
+        }
+
+        .project-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .project-card p {
+            color: var(--text-light);
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .project-tech {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .tech-badge {
+            background: var(--primary-color);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+        }
+
+        /* Certificates */
+        .certificates-list {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .certificate-item {
+            background: var(--bg-white);
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: var(--shadow);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .certificate-item:hover {
+            transform: translateX(5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .certificate-item a {
+            color: var(--text-dark);
+            text-decoration: none;
+            display: block;
+        }
+
+        .certificate-item a:hover {
+            color: var(--primary-color);
+        }
+
+        /* Experience */
+        .experience-item {
+            background: var(--bg-white);
+            padding: 30px;
+            margin-bottom: 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .experience-item h3 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .experience-item .experience-meta {
+            color: var(--text-light);
+            font-style: italic;
+            margin-bottom: 20px;
+        }
+
+        .experience-item ul {
+            margin-left: 20px;
+            margin-top: 15px;
+        }
+
+        .experience-item ul li {
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+
+        /* Recommendations */
+        .recommendation-box {
+            background: var(--bg-white);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            max-width: 900px;
+            margin: 0 auto;
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .recommendation-box blockquote {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: var(--text-dark);
+            margin: 20px 0;
+            padding: 20px;
+            background: var(--bg-light);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .recommendation-author {
+            margin-top: 25px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .recommendation-meta {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .recommendation-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+
+        .recommendation-link:hover {
+            background: var(--secondary-color);
+        }
+
+        /* Contact */
+        .contact-content {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .contact-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .contact-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 1.1rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .contact-links a:hover {
+            color: var(--secondary-color);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--text-dark);
+            color: white;
+            text-align: center;
+            padding: 30px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+
+            header .subtitle {
+                font-size: 1.2rem;
+            }
+
+            .profile-photo {
+                width: 150px;
+                height: 150px;
+            }
+
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .skills-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            nav {
+                display: none;
+            }
+
+            section {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <img src="https://github.com/pyLexxDramma.png" alt="Алексей Темников" class="profile-photo">
+            <h1>Алексей Темников</h1>
+            <p class="subtitle">Fullstack Python Developer 🎯</p>
+            <p style="margin-top: 20px; opacity: 0.9;">Создаю эффективный и надежный код, используя лучшие практики и современные инструменты разработки</p>
+            <div class="social-links">
+                <a href="https://github.com/pyLexxDramma" target="_blank">GitHub</a>
+                <a href="https://t.me/LexxDramma" target="_blank">Telegram</a>
+                <a href="mailto:lexxdramma@vk.com">Email</a>
+            </div>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="#about">О себе</a></li>
+                <li><a href="#skills">Навыки</a></li>
+                <li><a href="#projects">Проекты</a></li>
+                <li><a href="#experience">Опыт</a></li>
+                <li><a href="#certificates">Сертификаты</a></li>
+                <li><a href="#recommendations">Рекомендации</a></li>
+                <li><a href="#contact">Контакты</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section id="about">
+        <div class="container">
+            <h2>О себе</h2>
+            <div class="about-content">
+                <p>
+                    Я Алексей, Fullstack-разработчик на Python. Специализируюсь на создании 
+                    эффективных и надежных веб-приложений, используя современные технологии и лучшие практики разработки.
+                </p>
+                <p style="margin-top: 20px;">
+                    Имею опыт разработки backend-решений на Python (Django, Flask, FastAPI), создания 
+                    frontend-интерфейсов на React и Vue.js, работы с различными базами данных и развертывания 
+                    приложений с использованием Docker и CI/CD.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section id="skills">
+        <div class="container">
+            <h2>Навыки и технологии</h2>
+            <div class="skills-grid">
+                <div class="skill-category">
+                    <h3>Backend Development</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">Python</span>
+                        <span class="skill-tag">Django</span>
+                        <span class="skill-tag">Flask</span>
+                        <span class="skill-tag">FastAPI</span>
+                        <span class="skill-tag">Node.js</span>
+                        <span class="skill-tag">Express.js</span>
+                        <span class="skill-tag">REST API</span>
+                        <span class="skill-tag">GraphQL</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>Frontend Development</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">React.js</span>
+                        <span class="skill-tag">Vue.js</span>
+                        <span class="skill-tag">JavaScript</span>
+                        <span class="skill-tag">TypeScript</span>
+                        <span class="skill-tag">HTML5</span>
+                        <span class="skill-tag">CSS3</span>
+                        <span class="skill-tag">Redux</span>
+                        <span class="skill-tag">MobX</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>Базы данных</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">PostgreSQL</span>
+                        <span class="skill-tag">MySQL</span>
+                        <span class="skill-tag">SQLite</span>
+                        <span class="skill-tag">MongoDB</span>
+                        <span class="skill-tag">Redis</span>
+                        <span class="skill-tag">Elasticsearch</span>
+                        <span class="skill-tag">SQLAlchemy</span>
+                        <span class="skill-tag">Psycopg2</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>Инструменты и DevOps</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">Git</span>
+                        <span class="skill-tag">GitHub</span>
+                        <span class="skill-tag">Docker</span>
+                        <span class="skill-tag">Docker Compose</span>
+                        <span class="skill-tag">CI/CD</span>
+                        <span class="skill-tag">GitHub Actions</span>
+                        <span class="skill-tag">Jenkins</span>
+                        <span class="skill-tag">Linux</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>Облачные платформы</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">AWS</span>
+                        <span class="skill-tag">Google Cloud Platform</span>
+                        <span class="skill-tag">Heroku</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>Обработка данных</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">Pandas</span>
+                        <span class="skill-tag">NumPy</span>
+                        <span class="skill-tag">Matplotlib</span>
+                        <span class="skill-tag">Seaborn</span>
+                        <span class="skill-tag">Jupyter</span>
+                        <span class="skill-tag">Data Analysis</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>Тестирование</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">Pytest</span>
+                        <span class="skill-tag">unittest</span>
+                        <span class="skill-tag">Unit Testing</span>
+                        <span class="skill-tag">Integration Testing</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>Другие технологии</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">Selenium</span>
+                        <span class="skill-tag">Web Scraping</span>
+                        <span class="skill-tag">API Integration</span>
+                        <span class="skill-tag">Kotlin</span>
+                        <span class="skill-tag">C++</span>
+                        <span class="skill-tag">C#</span>
+                        <span class="skill-tag">Android Development</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="projects">
+        <div class="container">
+            <h2>Избранные проекты</h2>
+            <div class="projects-grid">
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>Парсер для Yandex.Maps и 2GIS</h3>
+                        <p>Веб-приложение для парсинга отзывов, рейтингов и ответов компаний из Яндекс.Карт и 2GIS с веб-интерфейсом и генерацией отчетов в форматах CSV, JSON и PDF.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">Python</span>
+                            <span class="tech-badge">FastAPI</span>
+                            <span class="tech-badge">Selenium</span>
+                            <span class="tech-badge">Docker</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>Backend для автоматизации закупочного процесса</h3>
+                        <p>Backend-решение для автоматизации закупочного процесса с REST API, системой управления пользователями и ролями.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">Python</span>
+                            <span class="tech-badge">Django</span>
+                            <span class="tech-badge">PostgreSQL</span>
+                            <span class="tech-badge">REST API</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>REST API для каталога товаров</h3>
+                        <p>Базовый backend для интернет-магазина с полнофункциональным REST API. Фронтенд на Next.js получает данные по API.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">Python</span>
+                            <span class="tech-badge">Django</span>
+                            <span class="tech-badge">REST API</span>
+                            <span class="tech-badge">Next.js</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>UserHub</h3>
+                        <p>Веб-приложение на Flask с SQLite и фронтендом на ванильном JavaScript с Bootstrap для управления пользователями.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">Python</span>
+                            <span class="tech-badge">Flask</span>
+                            <span class="tech-badge">SQLite</span>
+                            <span class="tech-badge">JavaScript</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>Microservices Communication</h3>
+                        <p>Проект по созданию микросервисной архитектуры с взаимодействием между сервисами. Реализация микросервисов на Node.js.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">Node.js</span>
+                            <span class="tech-badge">Express.js</span>
+                            <span class="tech-badge">Microservices</span>
+                            <span class="tech-badge">Docker</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>Expense Tracker</h3>
+                        <p>Десктопное приложение для отслеживания личных расходов и доходов, разработанное с использованием Python и библиотеки PyQt5.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">Python</span>
+                            <span class="tech-badge">PyQt5</span>
+                            <span class="tech-badge">SQLite</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>SystemMonitor</h3>
+                        <p>Десктопное приложение для Windows, разработанное на Python с использованием библиотеки Tkinter, которое предоставляет информацию о текущем состоянии системы.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">Python</span>
+                            <span class="tech-badge">Tkinter</span>
+                            <span class="tech-badge">Windows</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>XML Редактор с Валидацией по XSD</h3>
+                        <p>Веб-интерфейс для редактирования XML с валидацией по XSD схемам. Возможность редактирования как XML, так и XSD схем.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">JavaScript</span>
+                            <span class="tech-badge">XML</span>
+                            <span class="tech-badge">XSD</span>
+                            <span class="tech-badge">Web</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>English Teacher Bot</h3>
+                        <p>Telegram-бот для изучения английского языка с помощью карточек слов. Система обучения с прогрессом и статистикой.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">Python</span>
+                            <span class="tech-badge">Telegram Bot</span>
+                            <span class="tech-badge">SQLite</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>HackerNews React Interface</h3>
+                        <p>Разработка интерфейса для сайта Hacker News из двух страниц на React с интеграцией API и управлением состоянием.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">React</span>
+                            <span class="tech-badge">JavaScript</span>
+                            <span class="tech-badge">API</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>Приложение "Таймер и Секундомер"</h3>
+                        <p>Таймер и секундомер с графическим интерфейсом, разработанное на Python с использованием библиотеки Tkinter.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">Python</span>
+                            <span class="tech-badge">Tkinter</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-card-content">
+                        <h3>Post-it Note Application</h3>
+                        <p>Flask-приложение представляет собой интерфейс для создания заметок с функциями категоризации, напоминаний и переключателем темной/светлой темы.</p>
+                        <div class="project-tech">
+                            <span class="tech-badge">Python</span>
+                            <span class="tech-badge">Flask</span>
+                            <span class="tech-badge">JavaScript</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 40px;">
+                <p style="color: var(--text-light); font-size: 1.1rem;">
+                    И многие другие проекты... Посмотрите больше на 
+                    <a href="https://github.com/pyLexxDramma/portfolio" target="_blank" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">GitHub</a>
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section id="experience">
+        <div class="container">
+            <h2>Опыт работы</h2>
+            
+            <div class="experience-item">
+                <h3>Стажировка - Победа Digital Agency</h3>
+                <div class="experience-meta">
+                    Веб-разработка | 14 октября 2025 - 14 декабря 2025 | Дальнейшее сотрудничество
+                </div>
+                <p>За время стажировки занимался разработкой парсер-системы для внутренних нужд компании. Основная задача заключалась в создании инструмента для анализа репутации компаний на основе данных с картографических сервисов (2ГИС и Яндекс Карты).</p>
+                
+                <strong>Ключевые достижения:</strong>
+                <ul>
+                    <li>Разработка веб-приложения для поиска и анализа карточек компаний</li>
+                    <li>Сбор статистики: рейтинги, отзывы, скорость ответов, тональность</li>
+                    <li>Реализация асинхронного процесса парсинга с email-уведомлениями</li>
+                    <li>Создание защищенной системы доступа с возможностью скачивания отчетов в PDF</li>
+                    <li>Интеграция с внешними API картографических сервисов</li>
+                </ul>
+                
+                <p><strong>Технологии:</strong> Python, FastAPI, Selenium, Docker, PostgreSQL, Email notifications</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="certificates">
+        <div class="container">
+            <h2>Сертификаты и образование</h2>
+            <div class="certificates-list">
+                <div class="certificate-item">
+                    <a href="https://disk.yandex.ru/i/ly9LkHkF5ua0kg" target="_blank">
+                        <h3>Свидетельство о завершении обучения</h3>
+                        <p>Курс "Python-разработчик"</p>
+                    </a>
+                </div>
+                <div class="certificate-item">
+                    <a href="https://disk.yandex.ru/i/1jYzUNHfFUH7JQ" target="_blank">
+                        <h3>Django: Создание backend приложений</h3>
+                        <p>Сертификат по разработке backend-приложений на Django</p>
+                    </a>
+                </div>
+                <div class="certificate-item">
+                    <a href="https://disk.yandex.ru/i/0K5u5G-h7XXcrw" target="_blank">
+                        <h3>Python в веб-разработке</h3>
+                        <p>Сертификат по использованию Python в веб-разработке</p>
+                    </a>
+                </div>
+                <div class="certificate-item">
+                    <a href="https://disk.yandex.ru/i/Tc7Up8tAWo3AdA" target="_blank">
+                        <h3>Базы данных для Python разработчиков</h3>
+                        <p>Сертификат по работе с базами данных</p>
+                    </a>
+                </div>
+                <div class="certificate-item">
+                    <a href="https://disk.yandex.ru/i/6KuZsHvSDwe-sA" target="_blank">
+                        <h3>Профессиональная работа с Python</h3>
+                        <p>Сертификат по продвинутой работе с Python</p>
+                    </a>
+                </div>
+                <div class="certificate-item">
+                    <a href="https://disk.yandex.ru/i/wInXQg1hmin7gA" target="_blank">
+                        <h3>ООП и работа с API</h3>
+                        <p>Сертификат по объектно-ориентированному программированию и работе с API</p>
+                    </a>
+                </div>
+                <div class="certificate-item">
+                    <a href="https://disk.yandex.ru/i/JSyJFiodtPLiRw" target="_blank">
+                        <h3>GIT-система контроля версий</h3>
+                        <p>Сертификат по работе с Git и GitHub</p>
+                    </a>
+                </div>
+                <div class="certificate-item">
+                    <a href="https://disk.yandex.ru/i/-VO6m8ySqTrLaA" target="_blank">
+                        <h3>Сертификат о прохождении стажировки - Победа Digital Agency</h3>
+                        <p>Веб-разработка (14.10.2025 - 14.12.2025)</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="recommendations">
+        <div class="container">
+            <h2>Рекомендации</h2>
+            <div class="recommendation-box">
+                <h3>Победа Digital Agency</h3>
+                <blockquote>
+                    <strong>Алексей показал себя как ответственного и увлеченного сотрудника, способного работать со сложными техническими задачами. Он продемонстрировал понимание процессов веб-разработки, навыки работы с внешними API.</strong>
+                </blockquote>
+                <div class="recommendation-author">
+                    Дмитрий Ложкин<br>
+                    Генеральный директор, Победа Digital Agency
+                </div>
+                <div class="recommendation-meta">
+                    Стажировка пройдена в полной программе.<br>
+                    Период: 14 октября 2025 - 14 декабря 2025
+                </div>
+                <a href="https://disk.yandex.ru/i/Ul3Ei8XKg2qqFQ" target="_blank" class="recommendation-link">
+                    📄 Просмотреть отзыв о прохождении стажировки
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact">
+        <div class="container">
+            <h2>Контакты</h2>
+            <div class="contact-content">
+                <p style="font-size: 1.2rem; color: var(--text-light); margin-bottom: 30px;">
+                    Готов к сотрудничеству и новым проектам!
+                </p>
+                <div class="contact-links">
+                    <a href="https://github.com/pyLexxDramma" target="_blank">GitHub</a>
+                    <a href="https://t.me/LexxDramma" target="_blank">Telegram: @LexxDramma</a>
+                    <a href="mailto:lexxdramma@vk.com">Email: lexxdramma@vk.com</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Алексей Темников. Все права защищены.</p>
+            <p style="margin-top: 10px; opacity: 0.8;">Fullstack Python Developer</p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Highlight active nav item on scroll
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('nav a[href^="#"]');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.style.color = '';
+                if (link.getAttribute('href').slice(1) === current) {
+                    link.style.color = 'var(--primary-color)';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
