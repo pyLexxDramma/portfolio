@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Алексей Темников - Fullstack Python Developer | Python, Django, FastAPI, React, PostgreSQL | Веб-разработка, Backend, Frontend, DevOps | Опыт разработки веб-приложений, REST API, микросервисов">
-    <meta name="keywords" content="Python Developer, Fullstack Developer, Django, FastAPI, Flask, React, PostgreSQL, Backend Developer, Frontend Developer, Web Developer, Software Engineer, Python программист, веб-разработчик, разработчик Python, Django разработчик, FastAPI разработчик">
+    <meta name="description" content="Алексей Темников - Fullstack Python Developer | Создание сайтов и лендингов (в т.ч. самописных) | Python, Django, FastAPI, React, PostgreSQL | Веб-разработка, Backend, Frontend, лендинги, DevOps">
+    <meta name="keywords" content="Python Developer, Fullstack Developer, создание сайтов, лендинги, самописные сайты, Django, FastAPI, Flask, React, PostgreSQL, Backend Developer, Frontend Developer, Web Developer, Software Engineer, Python программист, веб-разработчик, разработчик Python, разработка лендингов">
     <meta name="author" content="Алексей Темников">
     <meta name="robots" content="index, follow">
     <meta property="og:title" content="Алексей Темников - Fullstack Python Developer">
@@ -55,7 +55,11 @@
         "Backend Development",
         "Frontend Development",
         "Fullstack Development",
-        "Software Engineering"
+        "Software Engineering",
+        "Landing Pages",
+        "Website Development",
+        "HTML",
+        "CSS"
       ],
       "hasCredential": [
         {
@@ -372,6 +376,132 @@
             color: var(--primary-color);
         }
 
+        /* Certificates Accordion */
+        .certificates-accordion {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .accordion-item {
+            background: var(--bg-white);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .accordion-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 25px;
+            cursor: pointer;
+            transition: background 0.3s;
+            border: none;
+            background: var(--bg-white);
+            width: 100%;
+            text-align: left;
+        }
+
+        .accordion-header:hover {
+            background: var(--bg-light);
+        }
+
+        .accordion-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .accordion-header h3 .emoji {
+            font-size: 1.4rem;
+        }
+
+        .accordion-header .count {
+            background: var(--primary-color);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .accordion-icon {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            transition: transform 0.3s;
+        }
+
+        .accordion-item.active .accordion-icon {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out;
+        }
+
+        .accordion-item.active .accordion-content {
+            max-height: 2000px;
+        }
+
+        .accordion-inner {
+            padding: 0 25px 25px;
+        }
+
+        .cert-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .cert-card {
+            background: var(--bg-light);
+            border-radius: 8px;
+            padding: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid var(--border-color);
+        }
+
+        .cert-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+
+        .cert-card a {
+            text-decoration: none;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cert-card .cert-icon {
+            font-size: 2rem;
+            flex-shrink: 0;
+        }
+
+        .cert-card .cert-info h4 {
+            margin: 0 0 5px 0;
+            font-size: 0.95rem;
+            color: var(--text-dark);
+            line-height: 1.3;
+        }
+
+        .cert-card .cert-info p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .cert-card:hover .cert-info h4 {
+            color: var(--primary-color);
+        }
+
         /* Additional Courses */
         .courses-section {
             margin-bottom: 50px;
@@ -657,7 +787,7 @@
             <img src="images/profile-photo.jpg" alt="Алексей Темников" class="profile-photo">
             <h1>Алексей Темников</h1>
             <p class="subtitle">Fullstack Python Developer 🎯</p>
-            <p style="margin-top: 20px; opacity: 0.9;">Создаю эффективный и надежный код, используя лучшие практики и современные инструменты разработки</p>
+            <p style="margin-top: 20px; opacity: 0.9;">Создаю сайты, лендинги (в т.ч. самописные на HTML/CSS/JS) и веб-приложения — от идеи до запуска. Backend и frontend, эффективный код и современные инструменты.</p>
             <div class="social-links">
                 <a href="https://github.com/pyLexxDramma" target="_blank">GitHub</a>
                 <a href="https://t.me/LexxDramma" target="_blank">Telegram</a>
@@ -705,9 +835,9 @@
                     больших объёмов данных. Владею паттернами проектирования (Clean Architecture, SOLID, DDD) и принципами построения микросервисной архитектуры.
                 </p>
                 <p style="margin-top: 20px;">
-                    <strong>Frontend-разработка:</strong> Создаю современные SPA на <strong>React.js</strong> с TypeScript, используя 
-                    TanStack Query для управления состоянием, React Router для маршрутизации и FSD-архитектуру для масштабируемости проектов.
-                    Также имею опыт работы с Vue.js, Redux, MobX.
+                    <strong>Frontend-разработка и сайты:</strong> Создаю современные SPA на <strong>React.js</strong> с TypeScript, 
+                    TanStack Query, React Router и FSD-архитектурой. Делаю <strong>сайты и лендинги</strong> — как самописные (чистый HTML, CSS, JavaScript), 
+                    так и на React/Vue с адаптивной вёрсткой и быстрой загрузкой. Опыт с Vue.js, Redux, MobX.
                 </p>
                 <p style="margin-top: 20px;">
                     <strong>Базы данных:</strong> Проектирую схемы БД и оптимизирую SQL-запросы. Работаю с реляционными (<strong>PostgreSQL, MySQL</strong>) 
@@ -716,6 +846,10 @@
                 <p style="margin-top: 20px;">
                     <strong>DevOps и инфраструктура:</strong> Контейнеризирую приложения с <strong>Docker</strong>, настраиваю CI/CD пайплайны 
                     (GitHub Actions, Jenkins), разворачиваю сервисы в облачных платформах (AWS, GCP). Работаю с Linux-серверами и автоматизирую процессы деплоя.
+                </p>
+                <p style="margin-top: 20px;">
+                    <strong>Сайты и лендинги:</strong> Разработка корпоративных сайтов и лендингов под ключ — самописная вёрстка (HTML5, CSS3, JS), 
+                    адаптивность, формы, интеграция с аналитикой и CRM. Готов и на «чистом» коде без CMS, и на связке с backend (Django/React).
                 </p>
                 <p style="margin-top: 20px;">
                     <strong>Дополнительные навыки:</strong> Web Scraping и парсинг данных (Selenium, BeautifulSoup), автоматизация бизнес-процессов,
@@ -759,6 +893,19 @@
                         <span class="skill-tag">MobX</span>
                         <span class="skill-tag">FSD Architecture</span>
                         <span class="skill-tag">Vite</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>Сайты и лендинги</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">Создание сайтов</span>
+                        <span class="skill-tag">Лендинги</span>
+                        <span class="skill-tag">Самописная вёрстка</span>
+                        <span class="skill-tag">Адаптивная вёрстка</span>
+                        <span class="skill-tag">HTML/CSS/JS</span>
+                        <span class="skill-tag">Landing Page</span>
+                        <span class="skill-tag">Корпоративные сайты</span>
                     </div>
                 </div>
 
@@ -1278,54 +1425,459 @@
     <section id="certificates">
         <div class="container">
             <h2>Сертификаты и образование</h2>
-            <div class="certificates-list">
-                <div class="certificate-item">
-                    <a href="https://disk.yandex.ru/i/ly9LkHkF5ua0kg" target="_blank">
-                        <h3>Свидетельство о завершении обучения</h3>
-                        <p>Курс "Python-разработчик"</p>
-                    </a>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 40px; max-width: 800px; margin-left: auto; margin-right: auto;">
+                Подтверждённые навыки и пройденные курсы. Нажмите на категорию, чтобы увидеть сертификаты.
+            </p>
+            
+            <div class="certificates-accordion">
+                <!-- Основные сертификаты -->
+                <div class="accordion-item active">
+                    <button class="accordion-header">
+                        <h3><span class="emoji">🎓</span> Основные сертификаты</h3>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="count">3</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="accordion-inner">
+                            <div class="cert-grid">
+                                <div class="cert-card">
+                                    <a href="certificates/MAIN.pdf" target="_blank">
+                                        <span class="cert-icon">📜</span>
+                                        <div class="cert-info">
+                                            <h4>Python-разработчик</h4>
+                                            <p>Свидетельство о завершении обучения</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/certificate.pdf" target="_blank">
+                                        <span class="cert-icon">📜</span>
+                                        <div class="cert-info">
+                                            <h4>Сертификат об обучении</h4>
+                                            <p>Основной сертификат</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/справка о курсе.pdf" target="_blank">
+                                        <span class="cert-icon">📋</span>
+                                        <div class="cert-info">
+                                            <h4>Справка о прохождении курса</h4>
+                                            <p>Подтверждение обучения</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="certificate-item">
-                    <a href="https://disk.yandex.ru/i/1jYzUNHfFUH7JQ" target="_blank">
-                        <h3>Django: Создание backend приложений</h3>
-                        <p>Сертификат по разработке backend-приложений на Django</p>
-                    </a>
+
+                <!-- Backend разработка -->
+                <div class="accordion-item">
+                    <button class="accordion-header">
+                        <h3><span class="emoji">⚙️</span> Backend разработка</h3>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="count">5</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="accordion-inner">
+                            <div class="cert-grid">
+                                <div class="cert-card">
+                                    <a href="certificates/Django.pdf" target="_blank">
+                                        <span class="cert-icon">🐍</span>
+                                        <div class="cert-info">
+                                            <h4>Django: Создание backend приложений</h4>
+                                            <p>Разработка на Django</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/pro_python.pdf" target="_blank">
+                                        <span class="cert-icon">🐍</span>
+                                        <div class="cert-info">
+                                            <h4>Профессиональная работа с Python</h4>
+                                            <p>Продвинутый Python</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/ООП и работа с API.pdf" target="_blank">
+                                        <span class="cert-icon">🔗</span>
+                                        <div class="cert-info">
+                                            <h4>ООП и работа с API</h4>
+                                            <p>Объектно-ориентированное программирование</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Основы Python создаём телеграм.pdf" target="_blank">
+                                        <span class="cert-icon">🤖</span>
+                                        <div class="cert-info">
+                                            <h4>Основы Python: Telegram-боты</h4>
+                                            <p>Создание Telegram-ботов</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Основы языка программирования.pdf" target="_blank">
+                                        <span class="cert-icon">💻</span>
+                                        <div class="cert-info">
+                                            <h4>Основы языка программирования</h4>
+                                            <p>Базовый курс</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="certificate-item">
-                    <a href="https://disk.yandex.ru/i/0K5u5G-h7XXcrw" target="_blank">
-                        <h3>Python в веб-разработке</h3>
-                        <p>Сертификат по использованию Python в веб-разработке</p>
-                    </a>
+
+                <!-- Frontend разработка -->
+                <div class="accordion-item">
+                    <button class="accordion-header">
+                        <h3><span class="emoji">🎨</span> Frontend разработка</h3>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="count">1</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="accordion-inner">
+                            <div class="cert-grid">
+                                <div class="cert-card">
+                                    <a href="certificates/Frontend-разработка основы HTML,.pdf" target="_blank">
+                                        <span class="cert-icon">🌐</span>
+                                        <div class="cert-info">
+                                            <h4>Frontend-разработка: HTML, CSS, JS</h4>
+                                            <p>Основы веб-разработки</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="certificate-item">
-                    <a href="https://disk.yandex.ru/i/Tc7Up8tAWo3AdA" target="_blank">
-                        <h3>Базы данных для Python разработчиков</h3>
-                        <p>Сертификат по работе с базами данных</p>
-                    </a>
+
+                <!-- Базы данных -->
+                <div class="accordion-item">
+                    <button class="accordion-header">
+                        <h3><span class="emoji">🗄️</span> Базы данных и SQL</h3>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="count">3</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="accordion-inner">
+                            <div class="cert-grid">
+                                <div class="cert-card">
+                                    <a href="certificates/Base fo PD.pdf" target="_blank">
+                                        <span class="cert-icon">🗃️</span>
+                                        <div class="cert-info">
+                                            <h4>Базы данных для Python разработчиков</h4>
+                                            <p>PostgreSQL, SQLAlchemy</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/sql.pdf" target="_blank">
+                                        <span class="cert-icon">📊</span>
+                                        <div class="cert-info">
+                                            <h4>SQL и работа с данными</h4>
+                                            <p>Язык запросов SQL</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/sql..pdf" target="_blank">
+                                        <span class="cert-icon">📈</span>
+                                        <div class="cert-info">
+                                            <h4>Продвинутый SQL</h4>
+                                            <p>Оптимизация запросов</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="certificate-item">
-                    <a href="https://disk.yandex.ru/i/6KuZsHvSDwe-sA" target="_blank">
-                        <h3>Профессиональная работа с Python</h3>
-                        <p>Сертификат по продвинутой работе с Python</p>
-                    </a>
+
+                <!-- DevOps и инструменты -->
+                <div class="accordion-item">
+                    <button class="accordion-header">
+                        <h3><span class="emoji">🔧</span> DevOps и инструменты</h3>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="count">2</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="accordion-inner">
+                            <div class="cert-grid">
+                                <div class="cert-card">
+                                    <a href="certificates/GIT.pdf" target="_blank">
+                                        <span class="cert-icon">📂</span>
+                                        <div class="cert-info">
+                                            <h4>Git — система контроля версий</h4>
+                                            <p>Git, GitHub</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/excel.pdf" target="_blank">
+                                        <span class="cert-icon">📗</span>
+                                        <div class="cert-info">
+                                            <h4>Excel: работа с данными</h4>
+                                            <p>Автоматизация в Excel</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="certificate-item">
-                    <a href="https://disk.yandex.ru/i/wInXQg1hmin7gA" target="_blank">
-                        <h3>ООП и работа с API</h3>
-                        <p>Сертификат по объектно-ориентированному программированию и работе с API</p>
-                    </a>
+
+                <!-- Дизайн -->
+                <div class="accordion-item">
+                    <button class="accordion-header">
+                        <h3><span class="emoji">🎭</span> UX/UI и дизайн</h3>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="count">4</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="accordion-inner">
+                            <div class="cert-grid">
+                                <div class="cert-card">
+                                    <a href="certificates/UXUI-дизайнер.pdf" target="_blank">
+                                        <span class="cert-icon">🎨</span>
+                                        <div class="cert-info">
+                                            <h4>UX/UI дизайнер</h4>
+                                            <p>Проектирование интерфейсов</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Основы работы в Figma.pdf" target="_blank">
+                                        <span class="cert-icon">🖼️</span>
+                                        <div class="cert-info">
+                                            <h4>Основы работы в Figma</h4>
+                                            <p>Дизайн интерфейсов</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Photoshop.pdf" target="_blank">
+                                        <span class="cert-icon">🖌️</span>
+                                        <div class="cert-info">
+                                            <h4>Adobe Photoshop</h4>
+                                            <p>Работа с графикой</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/AAE.pdf" target="_blank">
+                                        <span class="cert-icon">🎬</span>
+                                        <div class="cert-info">
+                                            <h4>Adobe After Effects</h4>
+                                            <p>Видеомонтаж и анимация</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="certificate-item">
-                    <a href="https://disk.yandex.ru/i/JSyJFiodtPLiRw" target="_blank">
-                        <h3>GIT-система контроля версий</h3>
-                        <p>Сертификат по работе с Git и GitHub</p>
-                    </a>
+
+                <!-- IT-специализации -->
+                <div class="accordion-item">
+                    <button class="accordion-header">
+                        <h3><span class="emoji">🚀</span> IT-специализации</h3>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="count">7</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="accordion-inner">
+                            <div class="cert-grid">
+                                <div class="cert-card">
+                                    <a href="certificates/AI.pdf" target="_blank">
+                                        <span class="cert-icon">🤖</span>
+                                        <div class="cert-info">
+                                            <h4>Искусственный интеллект</h4>
+                                            <p>Работа с AI</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Сис.аналитик.pdf" target="_blank">
+                                        <span class="cert-icon">📋</span>
+                                        <div class="cert-info">
+                                            <h4>Системный аналитик</h4>
+                                            <p>Анализ и проектирование</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Специалист по информационной безопасности.pdf" target="_blank">
+                                        <span class="cert-icon">🔒</span>
+                                        <div class="cert-info">
+                                            <h4>Информационная безопасность</h4>
+                                            <p>Защита данных</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/unity.pdf" target="_blank">
+                                        <span class="cert-icon">🎮</span>
+                                        <div class="cert-info">
+                                            <h4>Разработка игр на Unity</h4>
+                                            <p>Игровая разработка</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Основы разработки на Java.pdf" target="_blank">
+                                        <span class="cert-icon">☕</span>
+                                        <div class="cert-info">
+                                            <h4>Основы разработки на Java</h4>
+                                            <p>Язык программирования Java</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/1С-программист.pdf" target="_blank">
+                                        <span class="cert-icon">🏢</span>
+                                        <div class="cert-info">
+                                            <h4>1С-программист</h4>
+                                            <p>Разработка на 1С</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Веб-аналитика.pdf" target="_blank">
+                                        <span class="cert-icon">📊</span>
+                                        <div class="cert-info">
+                                            <h4>Веб-аналитика</h4>
+                                            <p>Анализ данных сайтов</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="certificate-item">
-                    <a href="https://disk.yandex.ru/i/-VO6m8ySqTrLaA" target="_blank">
-                        <h3>Сертификат о прохождении стажировки - Победа Digital Agency</h3>
-                        <p>Веб-разработка (14.10.2025 - 14.12.2025)</p>
-                    </a>
+
+                <!-- Маркетинг и SEO -->
+                <div class="accordion-item">
+                    <button class="accordion-header">
+                        <h3><span class="emoji">📢</span> Маркетинг и SEO</h3>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="count">6</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="accordion-inner">
+                            <div class="cert-grid">
+                                <div class="cert-card">
+                                    <a href="certificates/SEO.pdf" target="_blank">
+                                        <span class="cert-icon">🔍</span>
+                                        <div class="cert-info">
+                                            <h4>SEO-оптимизация</h4>
+                                            <p>Продвижение сайтов</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/SMM.pdf" target="_blank">
+                                        <span class="cert-icon">📱</span>
+                                        <div class="cert-info">
+                                            <h4>SMM-маркетинг</h4>
+                                            <p>Продвижение в соцсетях</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/маркетинг.pdf" target="_blank">
+                                        <span class="cert-icon">📈</span>
+                                        <div class="cert-info">
+                                            <h4>Основы маркетинга</h4>
+                                            <p>Маркетинговые стратегии</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Маркетинговая воронка.pdf" target="_blank">
+                                        <span class="cert-icon">🎯</span>
+                                        <div class="cert-info">
+                                            <h4>Маркетинговая воронка</h4>
+                                            <p>Воронки продаж</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Специалист по привлечению трафика.pdf" target="_blank">
+                                        <span class="cert-icon">👥</span>
+                                        <div class="cert-info">
+                                            <h4>Привлечение трафика</h4>
+                                            <p>Таргетинг и реклама</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Бренд-менеджер.pdf" target="_blank">
+                                        <span class="cert-icon">🏷️</span>
+                                        <div class="cert-info">
+                                            <h4>Бренд-менеджер</h4>
+                                            <p>Управление брендом</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Другое -->
+                <div class="accordion-item">
+                    <button class="accordion-header">
+                        <h3><span class="emoji">📚</span> Дополнительные курсы</h3>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="count">2</span>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="accordion-inner">
+                            <div class="cert-grid">
+                                <div class="cert-card">
+                                    <a href="certificates/Основы работы с текстом.pdf" target="_blank">
+                                        <span class="cert-icon">✍️</span>
+                                        <div class="cert-info">
+                                            <h4>Основы работы с текстом</h4>
+                                            <p>Копирайтинг</p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="cert-card">
+                                    <a href="certificates/Бухгалтер.pdf" target="_blank">
+                                        <span class="cert-icon">📒</span>
+                                        <div class="cert-info">
+                                            <h4>Бухгалтерский учёт</h4>
+                                            <p>Основы бухгалтерии</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1501,6 +2053,24 @@
     </footer>
 
     <script>
+        // Certificates Accordion
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', function() {
+                const item = this.parentElement;
+                const isActive = item.classList.contains('active');
+                
+                // Close all accordion items
+                document.querySelectorAll('.accordion-item').forEach(i => {
+                    i.classList.remove('active');
+                });
+                
+                // Open clicked item if it wasn't active
+                if (!isActive) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
         // Smooth scrolling
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
