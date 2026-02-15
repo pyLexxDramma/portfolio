@@ -236,6 +236,52 @@
             display: none;
         }
 
+        nav .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+            text-decoration: none;
+            background: transparent;
+            padding: 6px 0;
+            margin: -6px 0;
+            gap: 10px;
+        }
+
+        .nav-logo-left {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.15;
+            font-weight: 700;
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+            color: #ffffff;
+        }
+
+        .nav-logo-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.2;
+            font-weight: 700;
+            font-size: 0.52rem;
+            letter-spacing: 0.05em;
+            color: #5eead4;
+        }
+
+        .nav-logo-icon {
+            font-size: 0.75rem;
+            color: #5eead4;
+            margin: 1px 0;
+            font-weight: 400;
+        }
+
         /* Sections */
         section {
             padding: 60px 0;
@@ -939,6 +985,10 @@
                 position: relative;
             }
 
+            .nav-logo-left { font-size: 0.6rem; }
+            .nav-logo-right { font-size: 0.46rem; }
+            .nav-logo-icon { font-size: 0.65rem; }
+
             nav .nav-brand {
                 display: block;
                 font-size: 1.2rem;
@@ -1076,6 +1126,16 @@
     <canvas id="particles-bg"></canvas>
     <nav>
         <div class="container">
+            <a href="#" class="nav-logo" aria-label="На главную">
+                <span class="nav-logo-left">
+                    <span>FULL</span><span>STACK</span><span>DEV</span>
+                </span>
+                <span class="nav-logo-right">
+                    <span>LEXX</span>
+                    <span class="nav-logo-icon">&lt;/&gt;</span>
+                    <span>DRAMMA</span>
+                </span>
+            </a>
             <span class="nav-brand">АТ</span>
             <button class="menu-toggle" aria-label="Открыть меню">
                 <span></span>
