@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Канбан — планировщик Fullstack разработчика</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --bg-column: #1e293b;
+            --bg-card: #334155;
+            --border: rgba(255,255,255,0.08);
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --accent-soft: rgba(56, 189, 248, 0.2);
+            --green: #34d399;
+            --amber: #fbbf24;
+            --red: #f87171;
+            --violet: #a78bfa;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: auto;
+        }
+        .header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header h1 span { color: var(--accent); }
+        .board {
+            display: flex;
+            gap: 16px;
+            padding: 20px;
+            min-height: calc(100vh - 65px);
+            padding-bottom: 190px; /* место под нижний список завершённых */
+            align-items: flex-start;
+        }
+        .column {
+            flex: 0 0 280px;
+            background: var(--bg-column);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 105px);
+            min-height: 200px;
+        }
+        .column-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .column-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .column-count {
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .column-cards {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .column-cards.drag-over { background: var(--accent-soft); border-radius: 8px; }
+        .btn-add {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: 1px dashed var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.1rem;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+        .btn-add:hover { border-color: var(--accent); color: var(--accent); }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            cursor: grab;
+            transition: box-shadow 0.2s;
+        }
+        .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .card.dragging { opacity: 0.5; cursor: grabbing; }
+        .card-tag {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .card-tag.backend { background: rgba(248, 113, 113, 0.2); color: #fca5a5; }
+        .card-tag.frontend { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; }
+        .card-tag.devops { background: rgba(52, 211, 153, 0.2); color: #6ee7b7; }
+        .card-tag.bug { background: rgba(251, 191, 36, 0.2); color: #fde047; }
+        .card-tag.other { background: rgba(167, 139, 250, 0.2); color: #c4b5fd; }
+        .card-title {
+            font-weight: 500;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+        .card-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+        .card-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 6px;
+            opacity: 0.7;
+        }
+        .card-actions button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 0.85rem;
+            border-radius: 4px;
+        }
+        .card-actions button:hover { color: var(--accent); background: var(--accent-soft); }
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: var(--bg-column);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            width: 100%;
+            max-width: 420px;
+        }
+        .modal-content h2 { margin-bottom: 20px; font-size: 1.1rem; }
+        .modal-content label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--text-muted); }
+        .modal-content input, .modal-content select, .modal-content textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-family: inherit;
+            margin-bottom: 14px;
+            font-size: 0.9rem;
+        }
+        .modal-content textarea { min-height: 80px; resize: vertical; }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .modal-actions button {
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .btn-cancel { background: var(--bg-card); color: var(--text-muted); }
+        .btn-save { background: var(--accent); color: var(--bg); }
+        .btn-save:hover { filter: brightness(1.1); }
+        .btn-delete { background: rgba(248, 113, 113, 0.2); color: var(--red); }
+
+        /* Dashboard */
+        .dashboard {
+            padding: 16px 20px 0;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
+            align-items: stretch;
+        }
+        .dash-card {
+            background: var(--bg-column);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            overflow: hidden;
+            min-height: 128px;
+        }
+        .dash-card h2 {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            margin-bottom: 10px;
+        }
+        .kpis {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .kpi {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px;
+        }
+        .kpi-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .kpi-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .kpi-value.good { color: var(--green); }
+        .kpi-value.warn { color: var(--amber); }
+        .kpi-value.bad { color: var(--red); }
+
+        .dash-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        canvas.chart {
+            width: 100%;
+            height: 92px;
+            display: block;
+            background: transparent;
+        }
+        .dash-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 720px) {
+            canvas.chart { height: 110px; }
+        }
+
+        .dash-form {
+            display: grid;
+            grid-template-columns: 1.2fr 0.9fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .dash-form input,
+        .dash-form select,
+        .dash-form button,
+        .dash-form textarea {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.9);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.85rem;
+        }
+        .dash-form textarea { grid-column: 1 / -1; min-height: 62px; resize: vertical; }
+        .dash-form button {
+            background: var(--accent);
+            color: var(--bg);
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .dash-form button:hover { filter: brightness(1.08); }
+        .dash-list {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 160px;
+            overflow: auto;
+            padding-right: 2px;
+        }
+        .dash-list.tall { max-height: 220px; }
+        .dash-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.04);
+        }
+        .dash-item-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        .dash-item-sub {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .dash-item-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .dash-pill {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--green);
+            white-space: nowrap;
+        }
+        .dash-del {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 6px 8px;
+            cursor: pointer;
+        }
+        .dash-del:hover { color: var(--red); border-color: rgba(248, 113, 113, 0.45); }
+
+        .checklist {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 10px;
+        }
+        .check {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.04);
+            cursor: pointer;
+            user-select: none;
+        }
+        .check input { width: 16px; height: 16px; accent-color: var(--accent); }
+        .check span { font-size: 0.85rem; }
+        .check.done { border-color: rgba(52, 211, 153, 0.35); }
+        .check.done span { color: var(--green); font-weight: 600; }
+        .test-actions {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .btn-ghost:hover { border-color: rgba(56, 189, 248, 0.45); }
+        .btn-warn { border-color: rgba(251, 191, 36, 0.4); color: #fde68a; }
+        .btn-danger { border-color: rgba(248, 113, 113, 0.4); color: #fecaca; }
+
+        .ai-tools textarea {
+            width: 100%;
+            min-height: 120px;
+            resize: vertical;
+        }
+        .ai-tools .dash-form { grid-template-columns: 1fr 1fr 1fr; }
+        .ai-tools .dash-form button { grid-column: auto; }
+        .ai-tools .dash-form .wide { grid-column: 1 / -1; }
+        .ai-tools small { color: var(--text-muted); display: block; margin-top: 8px; line-height: 1.35; }
+
+        /* Completed projects panel (bottom) */
+        .completed-panel {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 50;
+            background: rgba(15, 23, 42, 0.98);
+            border-top: 1px solid var(--border);
+            padding: 12px 20px;
+            backdrop-filter: blur(10px);
+        }
+        .completed-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .completed-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .completed-total {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .completed-total span {
+            color: var(--green);
+            font-weight: 600;
+        }
+        .completed-list {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+        }
+        .completed-item {
+            min-width: 260px;
+            background: var(--bg-column);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .completed-item-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            line-height: 1.3;
+            margin-bottom: 6px;
+        }
+        .completed-item-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .completed-item-pay {
+            color: var(--green);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Card extras */
+        .card-meta {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.04);
+            white-space: nowrap;
+        }
+        .badge.overdue { border-color: rgba(248, 113, 113, 0.5); color: #fecaca; }
+        .badge.today { border-color: rgba(251, 191, 36, 0.5); color: #fde68a; }
+        .progress {
+            margin-top: 10px;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .progress > div {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), #60a5fa);
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1><span>Канбан</span> планировщик Fullstack</h1>
+    </header>
+
+    <section class="dashboard" aria-label="Дашборды">
+        <div class="dashboard-grid">
+            <div class="dash-card">
+                <h2>Сводка</h2>
+                <div class="kpis">
+                    <div class="kpi">
+                        <div class="kpi-label">Всего задач</div>
+                        <div class="kpi-value" id="kpiTotal">0</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Готово</div>
+                        <div class="kpi-value good" id="kpiDone">0%</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Просрочено</div>
+                        <div class="kpi-value bad" id="kpiOverdue">0</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Ближайший дедлайн</div>
+                        <div class="kpi-value warn" id="kpiNextDue">—</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">AI (в месяц)</div>
+                        <div class="kpi-value" id="kpiAiMonth">0 ₽</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">AI (за всё время)</div>
+                        <div class="kpi-value" id="kpiAiAll">0 ₽</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-card">
+                <h2>Распределение по колонкам</h2>
+                <canvas class="chart" id="chartColumns"></canvas>
+                <div class="dash-sub" id="subColumns"></div>
+            </div>
+
+            <div class="dash-card">
+                <h2>Дедлайны (14 дней)</h2>
+                <canvas class="chart" id="chartDeadlines"></canvas>
+                <div class="dash-sub" id="subDeadlines"></div>
+            </div>
+
+            <div class="dash-card">
+                <h2>Прогресс и оплата</h2>
+                <canvas class="chart" id="chartProgressPay"></canvas>
+                <div class="dash-sub" id="subProgressPay"></div>
+            </div>
+
+            <div class="dash-card">
+                <h2>Мои затраты на AI‑сервисы</h2>
+                <div class="dash-sub" id="subAiCosts"></div>
+                <form class="dash-form" onsubmit="event.preventDefault(); addAiCost();">
+                    <input id="aiService" placeholder="Сервис (ChatGPT, Cursor, API...)">
+                    <input id="aiAmount" type="number" min="0" step="10" placeholder="Сумма ₽">
+                    <select id="aiPeriod" aria-label="Периодичность">
+                        <option value="monthly">Ежемесячно</option>
+                        <option value="oneoff">Разово</option>
+                    </select>
+                    <input id="aiDate" type="date" aria-label="Дата (для разово)">
+                    <button type="submit">Добавить</button>
+                    <textarea id="aiNote" placeholder="Комментарий (необязательно): что за подписка/лимит/проект"></textarea>
+                </form>
+                <div class="dash-list" id="aiCostsList"></div>
+            </div>
+
+            <div class="dash-card">
+                <h2>Тестирование продукта</h2>
+                <div class="checklist" id="testChecklist"></div>
+                <div class="test-actions">
+                    <button class="btn-ghost btn-warn" type="button" onclick="createBugFromTesting()">Создать баг‑задачу</button>
+                    <button class="btn-ghost" type="button" onclick="createTestTask()">Создать задачу «Тестирование»</button>
+                    <button class="btn-ghost btn-danger" type="button" onclick="resetTesting()">Сбросить чек‑лист</button>
+                </div>
+                <div class="dash-form" style="grid-template-columns: 1fr;">
+                    <textarea id="testNotes" placeholder="Заметки тестирования: окружение, сборка, что проверяли, что сломалось..."></textarea>
+                    <button type="button" onclick="saveTestingNotes()">Сохранить заметки</button>
+                </div>
+            </div>
+
+            <div class="dash-card ai-tools">
+                <h2>ИИ‑помощник (заполнение/обновление канбана)</h2>
+                <div class="dash-sub">Экспортируйте текущее состояние → попросите ИИ предложить правки → импортируйте JSON обратно.</div>
+                <div class="test-actions" style="margin-top: 8px;">
+                    <button class="btn-ghost" type="button" onclick="copyBoardSnapshot()">Скопировать сводку для ИИ</button>
+                    <button class="btn-ghost" type="button" onclick="copyAiPromptTemplate()">Скопировать шаблон запроса</button>
+                    <button class="btn-ghost" type="button" onclick="downloadExport()">Экспорт JSON</button>
+                </div>
+                <form class="dash-form" onsubmit="event.preventDefault(); importFromTextarea();">
+                    <select id="importMode" aria-label="Режим импорта">
+                        <option value="merge">Импорт: обновить/добавить (merge)</option>
+                        <option value="replace">Импорт: полностью заменить доску (replace)</option>
+                    </select>
+                    <button type="button" class="btn-ghost btn-warn" onclick="clearImportTextarea()">Очистить поле</button>
+                    <button type="submit">Импортировать JSON</button>
+                    <textarea class="wide" id="importJson" placeholder="Вставьте сюда JSON от ИИ (или экспортированный JSON)"></textarea>
+                </form>
+                <div class="dash-list tall" id="importLog"></div>
+                <small>
+                    Подсказка: попросите ИИ вернуть <b>только JSON</b> без лишнего текста. Режим <b>merge</b> безопаснее: он обновляет карточки по <b>id</b> (если есть) и добавляет новые.
+                </small>
+            </div>
+        </div>
+    </section>
+
+    <div class="board" id="board">
+        <div class="column" data-column="backlog">
+            <div class="column-header">
+                <span class="column-title">Бэклог</span>
+                <span class="column-count" id="count-backlog">0</span>
+                <button class="btn-add" onclick="openAddCard('backlog')" title="Добавить">+</button>
+            </div>
+            <div class="column-cards" id="cards-backlog" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"></div>
+        </div>
+        <div class="column" data-column="todo">
+            <div class="column-header">
+                <span class="column-title">К выполнению</span>
+                <span class="column-count" id="count-todo">0</span>
+                <button class="btn-add" onclick="openAddCard('todo')" title="Добавить">+</button>
+            </div>
+            <div class="column-cards" id="cards-todo" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"></div>
+        </div>
+        <div class="column" data-column="progress">
+            <div class="column-header">
+                <span class="column-title">В работе</span>
+                <span class="column-count" id="count-progress">0</span>
+                <button class="btn-add" onclick="openAddCard('progress')" title="Добавить">+</button>
+            </div>
+            <div class="column-cards" id="cards-progress" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"></div>
+        </div>
+        <div class="column" data-column="review">
+            <div class="column-header">
+                <span class="column-title">Код-ревью</span>
+                <span class="column-count" id="count-review">0</span>
+                <button class="btn-add" onclick="openAddCard('review')" title="Добавить">+</button>
+            </div>
+            <div class="column-cards" id="cards-review" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"></div>
+        </div>
+        <div class="column" data-column="done">
+            <div class="column-header">
+                <span class="column-title">Готово</span>
+                <span class="column-count" id="count-done">0</span>
+                <button class="btn-add" onclick="openAddCard('done')" title="Добавить">+</button>
+            </div>
+            <div class="column-cards" id="cards-done" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"></div>
+        </div>
+    </div>
+
+    <section class="completed-panel" aria-label="Завершённые проекты">
+        <div class="completed-header">
+            <div class="completed-title">Завершённые проекты</div>
+            <div class="completed-total">Итого: <span id="completedTotal">0 ₽</span></div>
+        </div>
+        <div class="completed-list" id="completedList"></div>
+    </section>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Новая задача</h2>
+            <label>Название</label>
+            <input type="text" id="card-title" placeholder="Например: API авторизации">
+            <label>Тип</label>
+            <select id="card-tag">
+                <option value="backend">Бэкенд</option>
+                <option value="frontend">Фронтенд</option>
+                <option value="devops">DevOps</option>
+                <option value="bug">Баг</option>
+                <option value="other">Другое</option>
+            </select>
+            <label>Оплата (₽)</label>
+            <input type="number" id="card-pay" placeholder="Например: 25000" min="0" step="100">
+            <label>Дедлайн</label>
+            <input type="date" id="card-due">
+            <label>Прогресс (%)</label>
+            <input type="number" id="card-progress" placeholder="0..100" min="0" max="100" step="5">
+            <label>Описание (необязательно)</label>
+            <textarea id="card-desc" placeholder="Детали задачи..."></textarea>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeModal()">Отмена</button>
+                <button type="button" class="btn-delete" id="btn-delete" style="display:none; margin-right:auto" onclick="deleteCard()">Удалить</button>
+                <button type="button" class="btn-save" onclick="saveCard()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'kanban-fullstack-data';
+        const COLUMNS = ['backlog', 'todo', 'progress', 'review', 'done'];
+        const EXPORT_VERSION = 1;
+
+        let data = { backlog: [], todo: [], progress: [], review: [], done: [] };
+        let aiCosts = [];
+        let testing = {
+            checklist: {
+                smoke: false,
+                unit: false,
+                integration: false,
+                e2e: false,
+                manual: false,
+                performance: false,
+                security: false,
+                release: false
+            },
+            notes: ''
+        };
+        let editingId = null;
+        let addToColumn = null;
+
+        function load() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    COLUMNS.forEach(col => {
+                        if (Array.isArray(parsed[col])) data[col] = parsed[col];
+                    });
+                    if (Array.isArray(parsed.aiCosts)) aiCosts = parsed.aiCosts;
+                    if (parsed.testing && typeof parsed.testing === 'object') {
+                        testing = {
+                            checklist: { ...testing.checklist, ...(parsed.testing.checklist || {}) },
+                            notes: typeof parsed.testing.notes === 'string' ? parsed.testing.notes : ''
+                        };
+                    }
+                }
+            } catch (e) {}
+            render();
+        }
+
+        function save() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, aiCosts, testing }));
+            render();
+        }
+
+        function render() {
+            COLUMNS.forEach(col => {
+                const el = document.getElementById('cards-' + col);
+                const countEl = document.getElementById('count-' + col);
+                if (!el || !countEl) return;
+                el.innerHTML = '';
+                countEl.textContent = data[col].length;
+                data[col].forEach(card => {
+                    el.appendChild(createCardEl(card, col));
+                });
+            });
+            renderCompleted();
+            renderDashboard();
+            renderAiCosts();
+            renderTestingPanel();
+            renderImportLog();
+        }
+
+        let importLog = [];
+        function logImport(message, type = 'info') {
+            importLog.unshift({ ts: new Date().toISOString(), message, type });
+            importLog = importLog.slice(0, 20);
+            renderImportLog();
+        }
+
+        function renderImportLog() {
+            const el = document.getElementById('importLog');
+            if (!el) return;
+            el.innerHTML = '';
+            if (!importLog.length) {
+                const empty = document.createElement('div');
+                empty.className = 'dash-item';
+                empty.innerHTML = `<div><div class="dash-item-title">Лог импорта пуст</div><div class="dash-item-sub">Импортируйте JSON — тут появятся сообщения</div></div>`;
+                el.appendChild(empty);
+                return;
+            }
+            importLog.forEach(row => {
+                const item = document.createElement('div');
+                item.className = 'dash-item';
+                const color = row.type === 'error' ? 'var(--red)' : (row.type === 'warn' ? 'var(--amber)' : 'var(--text)');
+                item.innerHTML = `
+                    <div>
+                        <div class="dash-item-title" style="color:${color}">${escapeHtml(row.message)}</div>
+                        <div class="dash-item-sub">${escapeHtml(row.ts.replace('T',' ').replace('Z',''))}</div>
+                    </div>
+                `;
+                el.appendChild(item);
+            });
+        }
+
+        function createCardEl(card, columnId) {
+            const div = document.createElement('div');
+            div.className = 'card';
+            div.draggable = true;
+            div.dataset.id = card.id;
+            div.dataset.column = columnId;
+
+            const due = (card.due || '').trim();
+            const dueInfo = getDueInfo(due, columnId === 'done');
+            const progress = clampInt(card.progress, 0, 100, columnId === 'done' ? 100 : 0);
+            const pay = Number(card.pay) || 0;
+
+            div.innerHTML = `
+                <span class="card-tag ${card.tag || 'other'}">${getTagLabel(card.tag)}</span>
+                <div class="card-title">${escapeHtml(card.title)}</div>
+                ${card.desc ? `<div class="card-desc">${escapeHtml(card.desc)}</div>` : ''}
+                <div class="card-meta">
+                    ${due ? `<span class="badge ${dueInfo.cls}">⏰ ${escapeHtml(dueInfo.text)}</span>` : `<span class="badge">⏰ без дедлайна</span>`}
+                    <span class="badge">₽ ${formatMoney(pay).replace(' ₽','')}</span>
+                </div>
+                <div class="progress" aria-label="Прогресс ${progress}%"><div style="width:${progress}%"></div></div>
+                <div class="card-actions">
+                    <button type="button" onclick="event.stopPropagation(); openEdit('${card.id}', '${columnId}')">Править</button>
+                </div>
+            `;
+            div.ondragstart = dragStart;
+            div.ondragend = dragEnd;
+            return div;
+        }
+
+        function getTagLabel(tag) {
+            const labels = { backend: 'Бэкенд', frontend: 'Фронтенд', devops: 'DevOps', bug: 'Баг', other: 'Другое' };
+            return labels[tag] || 'Другое';
+        }
+
+        function formatMoney(value) {
+            const num = Number(value) || 0;
+            return num.toLocaleString('ru-RU') + ' ₽';
+        }
+
+        function clampInt(value, min, max, fallback) {
+            const n = Number(value);
+            if (Number.isNaN(n)) return fallback;
+            return Math.max(min, Math.min(max, Math.round(n)));
+        }
+
+        function startOfDay(d) {
+            const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            x.setHours(0,0,0,0);
+            return x;
+        }
+
+        function parseYmd(ymd) {
+            if (!ymd) return null;
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+            if (!m) return null;
+            const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+            if (Number.isNaN(d.getTime())) return null;
+            return startOfDay(d);
+        }
+
+        function getDueInfo(dueYmd, isDone) {
+            if (isDone) return { cls: '', text: dueYmd };
+            const due = parseYmd(dueYmd);
+            if (!due) return { cls: '', text: dueYmd };
+            const today = startOfDay(new Date());
+            const diffDays = Math.round((due - today) / (24 * 3600 * 1000));
+            if (diffDays < 0) return { cls: 'overdue', text: `${dueYmd} (−${Math.abs(diffDays)}д)` };
+            if (diffDays === 0) return { cls: 'today', text: `${dueYmd} (сегодня)` };
+            return { cls: '', text: `${dueYmd} (+${diffDays}д)` };
+        }
+
+        function renderCompleted() {
+            const list = document.getElementById('completedList');
+            const totalEl = document.getElementById('completedTotal');
+            if (!list || !totalEl) return;
+
+            list.innerHTML = '';
+            const doneCards = Array.isArray(data.done) ? data.done : [];
+
+            let sum = 0;
+            doneCards.forEach(card => { sum += Number(card.pay) || 0; });
+            totalEl.textContent = formatMoney(sum);
+
+            if (doneCards.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'completed-item';
+                empty.innerHTML = `
+                    <div class="completed-item-title">Пока нет завершённых проектов</div>
+                    <div class="completed-item-meta"><span>Перетащите задачу в «Готово»</span><span class="completed-item-pay">0 ₽</span></div>
+                `;
+                list.appendChild(empty);
+                return;
+            }
+
+            doneCards.forEach(card => {
+                const pay = Number(card.pay) || 0;
+                const item = document.createElement('div');
+                item.className = 'completed-item';
+                item.innerHTML = `
+                    <div class="completed-item-title">${escapeHtml(card.title)}</div>
+                    <div class="completed-item-meta">
+                        <span>${getTagLabel(card.tag)}</span>
+                        <span class="completed-item-pay">${formatMoney(pay)}</span>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        function openAddCard(columnId) {
+            addToColumn = columnId;
+            editingId = null;
+            document.getElementById('modal-title').textContent = 'Новая задача';
+            document.getElementById('card-title').value = '';
+            document.getElementById('card-desc').value = '';
+            document.getElementById('card-tag').value = 'backend';
+            document.getElementById('card-pay').value = '';
+            document.getElementById('card-due').value = '';
+            document.getElementById('card-progress').value = '0';
+            document.getElementById('btn-delete').style.display = 'none';
+            document.getElementById('modal').classList.add('show');
+        }
+
+        function openEdit(id, columnId) {
+            const card = data[columnId].find(c => c.id === id);
+            if (!card) return;
+            editingId = id;
+            addToColumn = columnId;
+            document.getElementById('modal-title').textContent = 'Редактировать';
+            document.getElementById('card-title').value = card.title;
+            document.getElementById('card-desc').value = card.desc || '';
+            document.getElementById('card-tag').value = card.tag || 'other';
+            document.getElementById('card-pay').value = (card.pay ?? '') === 0 ? '0' : (card.pay ?? '');
+            document.getElementById('card-due').value = card.due || '';
+            document.getElementById('card-progress').value = String(clampInt(card.progress, 0, 100, columnId === 'done' ? 100 : 0));
+            document.getElementById('btn-delete').style.display = 'block';
+            document.getElementById('modal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+        }
+
+        function saveCard() {
+            const title = document.getElementById('card-title').value.trim();
+            if (!title) return;
+            const tag = document.getElementById('card-tag').value;
+            const desc = document.getElementById('card-desc').value.trim();
+            const pay = Math.max(0, Number(document.getElementById('card-pay').value) || 0);
+            const due = (document.getElementById('card-due').value || '').trim();
+            const progress = clampInt(document.getElementById('card-progress').value, 0, 100, 0);
+
+            if (editingId) {
+                const col = COLUMNS.find(c => data[c].some(card => card.id === editingId));
+                if (col) {
+                    const card = data[col].find(c => c.id === editingId);
+                    if (card) {
+                        card.title = title;
+                        card.tag = tag;
+                        card.desc = desc;
+                        card.pay = pay;
+                        card.due = due;
+                        card.progress = col === 'done' ? 100 : progress;
+                    }
+                }
+            } else {
+                const card = { id: 'id-' + Date.now(), title, tag, desc, pay, due, progress };
+                data[addToColumn].push(card);
+            }
+            save();
+            closeModal();
+        }
+
+        function deleteCard() {
+            if (!editingId) return;
+            COLUMNS.forEach(col => {
+                data[col] = data[col].filter(c => c.id !== editingId);
+            });
+            save();
+            closeModal();
+        }
+
+        function dragStart(e) {
+            e.target.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', JSON.stringify({
+                id: e.target.dataset.id,
+                column: e.target.dataset.column
+            }));
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function dragEnd(e) {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.column-cards').forEach(el => el.classList.remove('drag-over'));
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function dragLeave(e) {
+            if (!e.currentTarget.contains(e.relatedTarget))
+                e.currentTarget.classList.remove('drag-over');
+        }
+
+        function drop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            const raw = e.dataTransfer.getData('text/plain');
+            if (!raw) return;
+            const { id, column: fromCol } = JSON.parse(raw);
+            const toCol = e.currentTarget.id.replace('cards-', '');
+            if (fromCol === toCol) return;
+            const card = data[fromCol].find(c => c.id === id);
+            if (!card) return;
+            data[fromCol] = data[fromCol].filter(c => c.id !== id);
+            if (toCol === 'done') {
+                card.progress = 100;
+                card.completedAt = card.completedAt || new Date().toISOString();
+            }
+            data[toCol].push(card);
+            save();
+        }
+
+        function renderDashboard() {
+            const total = COLUMNS.reduce((acc, c) => acc + (data[c]?.length || 0), 0);
+            const done = data.done?.length || 0;
+            const donePct = total ? Math.round((done / total) * 100) : 0;
+
+            // overdue and next due (only not-done)
+            const today = startOfDay(new Date());
+            let overdue = 0;
+            let nextDue = null;
+
+            const activeCards = [];
+            COLUMNS.filter(c => c !== 'done').forEach(col => {
+                (data[col] || []).forEach(card => {
+                    activeCards.push(card);
+                    const d = parseYmd(card.due);
+                    if (!d) return;
+                    if (d < today) overdue++;
+                    if (d >= today && (!nextDue || d < nextDue)) nextDue = d;
+                });
+            });
+
+            const kpiTotal = document.getElementById('kpiTotal');
+            const kpiDone = document.getElementById('kpiDone');
+            const kpiOverdue = document.getElementById('kpiOverdue');
+            const kpiNextDue = document.getElementById('kpiNextDue');
+            const kpiAiMonth = document.getElementById('kpiAiMonth');
+            const kpiAiAll = document.getElementById('kpiAiAll');
+            if (kpiTotal) kpiTotal.textContent = String(total);
+            if (kpiDone) kpiDone.textContent = `${donePct}%`;
+            if (kpiOverdue) kpiOverdue.textContent = String(overdue);
+            if (kpiNextDue) kpiNextDue.textContent = nextDue ? nextDue.toISOString().slice(0,10) : '—';
+
+            const aiAgg = aggregateAiCosts();
+            if (kpiAiMonth) kpiAiMonth.textContent = formatMoney(aiAgg.thisMonthTotal);
+            if (kpiAiAll) kpiAiAll.textContent = formatMoney(aiAgg.allTimeTotal);
+
+            // Chart: columns
+            const colLabels = ['Бэклог', 'К выполнению', 'В работе', 'Код-ревью', 'Готово'];
+            const colKeys = ['backlog', 'todo', 'progress', 'review', 'done'];
+            const colVals = colKeys.map(k => (data[k]?.length || 0));
+            drawBarChart(document.getElementById('chartColumns'), colLabels, colVals, '#38bdf8');
+            const subColumns = document.getElementById('subColumns');
+            if (subColumns) {
+                subColumns.innerHTML = `Всего: <b>${total}</b> · Готово: <b>${done}</b>`;
+            }
+
+            // Chart: deadlines next 14 days
+            const days = 14;
+            const buckets = new Array(days).fill(0);
+            activeCards.forEach(card => {
+                const d = parseYmd(card.due);
+                if (!d) return;
+                const diff = Math.round((d - today) / (24 * 3600 * 1000));
+                if (diff >= 0 && diff < days) buckets[diff] += 1;
+            });
+            const dayLabels = buckets.map((_, i) => i === 0 ? '0' : String(i));
+            drawLineChart(document.getElementById('chartDeadlines'), dayLabels, buckets, '#fbbf24');
+            const subDeadlines = document.getElementById('subDeadlines');
+            if (subDeadlines) {
+                const due7 = buckets.slice(0, 7).reduce((a,b)=>a+b,0);
+                subDeadlines.innerHTML = `Сроки 7д: <b>${due7}</b> · Просрочено: <b style="color:var(--red)">${overdue}</b>`;
+            }
+
+            // Chart: progress + pay
+            const avgProgress = activeCards.length
+                ? Math.round(activeCards.reduce((a,c)=> a + clampInt(c.progress,0,100,0), 0) / activeCards.length)
+                : 0;
+            const plannedPay = COLUMNS.reduce((acc, c) => acc + (data[c] || []).reduce((a,card)=>a + (Number(card.pay)||0),0), 0);
+            const donePay = (data.done || []).reduce((a,card)=>a + (Number(card.pay)||0),0);
+
+            drawProgressPay(document.getElementById('chartProgressPay'), { donePct, avgProgress, plannedPay, donePay });
+            const subProgressPay = document.getElementById('subProgressPay');
+            if (subProgressPay) {
+                subProgressPay.innerHTML = `Средн. прогресс: <b>${avgProgress}%</b> · Оплата: <b style="color:var(--green)">${formatMoney(donePay)}</b> / ${formatMoney(plannedPay)}`;
+            }
+        }
+
+        function boardSnapshotText() {
+            const total = COLUMNS.reduce((acc, c) => acc + (data[c]?.length || 0), 0);
+            const done = data.done?.length || 0;
+            const today = startOfDay(new Date());
+
+            let overdue = 0;
+            let nextDue = null;
+            COLUMNS.filter(c => c !== 'done').forEach(col => {
+                (data[col] || []).forEach(card => {
+                    const d = parseYmd(card.due);
+                    if (!d) return;
+                    if (d < today) overdue++;
+                    if (d >= today && (!nextDue || d < nextDue)) nextDue = d;
+                });
+            });
+
+            const aiAgg = aggregateAiCosts();
+            const byCol = {
+                backlog: data.backlog?.length || 0,
+                todo: data.todo?.length || 0,
+                progress: data.progress?.length || 0,
+                review: data.review?.length || 0,
+                done: data.done?.length || 0
+            };
+
+            return [
+                `Сводка доски (для ИИ):`,
+                `- Всего задач: ${total}`,
+                `- Колонки: backlog=${byCol.backlog}, todo=${byCol.todo}, progress=${byCol.progress}, review=${byCol.review}, done=${byCol.done}`,
+                `- Просрочено: ${overdue}`,
+                `- Ближайший дедлайн: ${nextDue ? nextDue.toISOString().slice(0,10) : '—'}`,
+                `- AI расходы: в месяц=${formatMoney(aiAgg.thisMonthTotal)}, за всё время=${formatMoney(aiAgg.allTimeTotal)}`,
+                ``,
+                `Схема карточки: { id?, column, title, tag, desc?, pay?, due?, progress? }`,
+                `Колонки: backlog | todo | progress | review | done`,
+                `Теги: backend | frontend | devops | bug | other`
+            ].join('\n');
+        }
+
+        async function copyText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (e) {
+                // fallback
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); } catch (e2) {}
+                document.body.removeChild(ta);
+                return true;
+            }
+        }
+
+        function copyBoardSnapshot() {
+            copyText(boardSnapshotText());
+            logImport('Сводка скопирована в буфер обмена', 'info');
+        }
+
+        function copyAiPromptTemplate() {
+            const template = [
+                `Задача: помоги обновить мой канбан (fullstack).`,
+                ``,
+                boardSnapshotText(),
+                ``,
+                `Правила ответа: верни ТОЛЬКО JSON без пояснений.`,
+                `Формат (предпочтительно):`,
+                `{`,
+                `  "mode": "merge",`,
+                `  "tasks": [`,
+                `    { "id": "... (если обновление)", "column": "todo|progress|review|done|backlog", "title": "...", "tag": "backend|frontend|devops|bug|other", "desc": "...", "pay": 0, "due": "YYYY-MM-DD", "progress": 0 }`,
+                `  ],`,
+                `  "aiCosts": [ { "id": "...", "service": "...", "amount": 0, "period": "monthly|oneoff", "date": "YYYY-MM-DD", "note": "" } ],`,
+                `  "testing": { "notes": "...", "checklist": { "smoke": true/false, "unit": ..., "release": ... } }`,
+                `}`,
+                ``,
+                `Если нужно, можешь вернуть полный экспортный формат доски с колонками backlog/todo/progress/review/done.`
+            ].join('\n');
+            copyText(template);
+            logImport('Шаблон запроса скопирован в буфер обмена', 'info');
+        }
+
+        function exportState() {
+            return {
+                version: EXPORT_VERSION,
+                exportedAt: new Date().toISOString(),
+                backlog: data.backlog || [],
+                todo: data.todo || [],
+                progress: data.progress || [],
+                review: data.review || [],
+                done: data.done || [],
+                aiCosts: aiCosts || [],
+                testing: testing || { checklist: {}, notes: '' }
+            };
+        }
+
+        function downloadExport() {
+            const payload = exportState();
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `kanban-export-${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            logImport('Экспорт JSON скачан', 'info');
+        }
+
+        function clearImportTextarea() {
+            const el = document.getElementById('importJson');
+            if (el) el.value = '';
+        }
+
+        function normalizeTask(t) {
+            if (!t || typeof t !== 'object') return null;
+            const column = String(t.column || '').trim();
+            if (!COLUMNS.includes(column)) return null;
+            const title = String(t.title || '').trim();
+            if (!title) return null;
+            const id = (t.id && String(t.id).trim()) ? String(t.id).trim() : ('id-' + Date.now() + '-' + Math.floor(Math.random()*1000));
+            const tag = String(t.tag || 'other');
+            const desc = typeof t.desc === 'string' ? t.desc : '';
+            const pay = Math.max(0, Number(t.pay) || 0);
+            const due = typeof t.due === 'string' ? t.due.trim() : '';
+            const progress = clampInt(t.progress, 0, 100, 0);
+            return { id, title, tag, desc, pay, due, progress };
+        }
+
+        function applyMergeImport(obj) {
+            let upserts = 0;
+            let added = 0;
+
+            const tasks = Array.isArray(obj.tasks) ? obj.tasks : null;
+            if (tasks) {
+                tasks.forEach(raw => {
+                    const column = String(raw.column || '').trim();
+                    const norm = normalizeTask(raw);
+                    if (!norm) return;
+                    // remove from any column if exists
+                    let found = false;
+                    COLUMNS.forEach(col => {
+                        const idx = (data[col] || []).findIndex(c => c.id === norm.id);
+                        if (idx >= 0) {
+                            data[col][idx] = { ...data[col][idx], ...norm };
+                            found = true;
+                            upserts++;
+                        }
+                    });
+                    if (!found) {
+                        data[column].push(norm);
+                        added++;
+                    } else {
+                        // move if needed
+                        COLUMNS.forEach(col => {
+                            if (col !== column) data[col] = (data[col] || []).filter(c => c.id !== norm.id);
+                        });
+                        data[column] = data[column] || [];
+                        if (!data[column].some(c => c.id === norm.id)) data[column].push(norm);
+                    }
+                });
+            } else {
+                // full export format
+                const colsPresent = COLUMNS.some(c => Array.isArray(obj[c]));
+                if (colsPresent) {
+                    COLUMNS.forEach(col => {
+                        if (!Array.isArray(obj[col])) return;
+                        obj[col].forEach(raw => {
+                            const norm = normalizeTask({ ...raw, column: col });
+                            if (!norm) return;
+                            let found = false;
+                            COLUMNS.forEach(c2 => {
+                                const idx = (data[c2] || []).findIndex(c => c.id === norm.id);
+                                if (idx >= 0) {
+                                    data[c2][idx] = { ...data[c2][idx], ...norm };
+                                    found = true;
+                                    upserts++;
+                                }
+                            });
+                            if (!found) { data[col].push(norm); added++; }
+                        });
+                    });
+                }
+            }
+
+            if (Array.isArray(obj.aiCosts)) {
+                // simple replace for costs
+                aiCosts = obj.aiCosts.map(x => ({ ...x, id: x.id || ('ai-' + Date.now() + '-' + Math.floor(Math.random()*1000)) }));
+            }
+            if (obj.testing && typeof obj.testing === 'object') {
+                testing = {
+                    checklist: { ...testing.checklist, ...(obj.testing.checklist || {}) },
+                    notes: typeof obj.testing.notes === 'string' ? obj.testing.notes : testing.notes
+                };
+            }
+
+            return { upserts, added };
+        }
+
+        function applyReplaceImport(obj) {
+            const colsPresent = COLUMNS.every(c => Array.isArray(obj[c]));
+            if (!colsPresent) throw new Error('Для режима replace нужен полный экспорт с колонками backlog/todo/progress/review/done.');
+            COLUMNS.forEach(col => {
+                data[col] = obj[col].map(raw => normalizeTask({ ...raw, column: col })).filter(Boolean);
+            });
+            aiCosts = Array.isArray(obj.aiCosts) ? obj.aiCosts : [];
+            if (obj.testing && typeof obj.testing === 'object') {
+                testing = {
+                    checklist: { ...testing.checklist, ...(obj.testing.checklist || {}) },
+                    notes: typeof obj.testing.notes === 'string' ? obj.testing.notes : ''
+                };
+            }
+        }
+
+        function importFromTextarea() {
+            const ta = document.getElementById('importJson');
+            const modeEl = document.getElementById('importMode');
+            if (!ta) return;
+            const txt = ta.value.trim();
+            if (!txt) return;
+            let obj;
+            try {
+                obj = JSON.parse(txt);
+            } catch (e) {
+                logImport('Ошибка: это не JSON (проверьте скобки/кавычки).', 'error');
+                return;
+            }
+            const mode = modeEl?.value || (obj.mode || 'merge');
+            try {
+                if (mode === 'replace') {
+                    applyReplaceImport(obj);
+                    logImport('Импорт replace: доска полностью заменена.', 'warn');
+                } else {
+                    const res = applyMergeImport(obj);
+                    logImport(`Импорт merge: обновлено ${res.upserts}, добавлено ${res.added}.`, 'info');
+                }
+                save();
+            } catch (e) {
+                logImport('Ошибка импорта: ' + (e?.message || String(e)), 'error');
+            }
+        }
+
+        function nowYmd() {
+            const d = new Date();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${d.getFullYear()}-${m}-${day}`;
+        }
+
+        function ymKey(ymd) {
+            if (!ymd || typeof ymd !== 'string') return '';
+            const m = /^(\d{4}-\d{2})-/.exec(ymd);
+            return m ? m[1] : '';
+        }
+
+        function aggregateAiCosts() {
+            const monthKey = ymKey(nowYmd());
+            let monthlyRecurring = 0;
+            let thisMonthOneOff = 0;
+            let allTimeTotal = 0;
+
+            (aiCosts || []).forEach(item => {
+                const amount = Number(item.amount) || 0;
+                const period = item.period || 'monthly';
+                allTimeTotal += amount;
+                if (period === 'monthly') monthlyRecurring += amount;
+                if (period === 'oneoff' && ymKey(item.date) === monthKey) thisMonthOneOff += amount;
+            });
+
+            return {
+                monthlyRecurring,
+                thisMonthOneOff,
+                thisMonthTotal: monthlyRecurring + thisMonthOneOff,
+                allTimeTotal
+            };
+        }
+
+        function renderAiCosts() {
+            const list = document.getElementById('aiCostsList');
+            const sub = document.getElementById('subAiCosts');
+            if (!list || !sub) return;
+
+            const agg = aggregateAiCosts();
+            sub.innerHTML = `Ежемесячно: <b style="color:var(--accent)">${formatMoney(agg.monthlyRecurring)}</b> · В этом месяце (всего): <b style="color:var(--green)">${formatMoney(agg.thisMonthTotal)}</b>`;
+
+            list.innerHTML = '';
+            if (!aiCosts || aiCosts.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'dash-item';
+                empty.innerHTML = `<div><div class="dash-item-title">Пока нет расходов</div><div class="dash-item-sub">Добавьте подписки (ежемесячно) и разовые платежи</div></div>`;
+                list.appendChild(empty);
+                return;
+            }
+
+            [...aiCosts].slice().reverse().forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'dash-item';
+                const title = `${item.service || 'AI сервис'}${item.period === 'monthly' ? ' · ежемесячно' : ' · разово'}`;
+                const subText = item.period === 'oneoff'
+                    ? (item.date ? `Дата: ${item.date}` : 'Дата: не указана')
+                    : (item.note ? item.note : 'Подписка/лимиты');
+                row.innerHTML = `
+                    <div>
+                        <div class="dash-item-title">${escapeHtml(title)}</div>
+                        <div class="dash-item-sub">${escapeHtml(subText || '')}</div>
+                    </div>
+                    <div class="dash-item-right">
+                        <div class="dash-pill">${formatMoney(item.amount)}</div>
+                        <button class="dash-del" type="button" title="Удалить" aria-label="Удалить" onclick="deleteAiCost('${item.id}')">✕</button>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function addAiCost() {
+            const service = (document.getElementById('aiService')?.value || '').trim();
+            const amount = Math.max(0, Number(document.getElementById('aiAmount')?.value) || 0);
+            const period = document.getElementById('aiPeriod')?.value || 'monthly';
+            const date = (document.getElementById('aiDate')?.value || '').trim();
+            const note = (document.getElementById('aiNote')?.value || '').trim();
+            if (!service || !amount) return;
+
+            aiCosts.push({
+                id: 'ai-' + Date.now(),
+                service,
+                amount,
+                period,
+                date: period === 'oneoff' ? date : '',
+                note: period === 'monthly' ? note : note
+            });
+
+            document.getElementById('aiService').value = '';
+            document.getElementById('aiAmount').value = '';
+            document.getElementById('aiDate').value = '';
+            document.getElementById('aiNote').value = '';
+            document.getElementById('aiPeriod').value = 'monthly';
+
+            save();
+        }
+
+        function deleteAiCost(id) {
+            aiCosts = (aiCosts || []).filter(x => x.id !== id);
+            save();
+        }
+
+        const TEST_ITEMS = [
+            { key: 'smoke', label: 'Smoke' },
+            { key: 'unit', label: 'Unit' },
+            { key: 'integration', label: 'Integration' },
+            { key: 'e2e', label: 'E2E' },
+            { key: 'manual', label: 'Manual' },
+            { key: 'performance', label: 'Performance' },
+            { key: 'security', label: 'Security' },
+            { key: 'release', label: 'Release' }
+        ];
+
+        function renderTestingPanel() {
+            const el = document.getElementById('testChecklist');
+            const notes = document.getElementById('testNotes');
+            if (!el) return;
+            el.innerHTML = '';
+
+            TEST_ITEMS.forEach(item => {
+                const checked = !!testing?.checklist?.[item.key];
+                const row = document.createElement('label');
+                row.className = 'check' + (checked ? ' done' : '');
+                row.innerHTML = `<input type="checkbox" ${checked ? 'checked' : ''} aria-label="${item.label}"><span>${item.label}</span>`;
+                row.addEventListener('click', (e) => {
+                    // allow clicking anywhere on row
+                    if (e.target && e.target.tagName === 'INPUT') return;
+                    const input = row.querySelector('input');
+                    input.checked = !input.checked;
+                    toggleTest(item.key, input.checked);
+                });
+                row.querySelector('input').addEventListener('change', (e) => toggleTest(item.key, e.target.checked));
+                el.appendChild(row);
+            });
+
+            if (notes && typeof testing?.notes === 'string') notes.value = testing.notes;
+        }
+
+        function toggleTest(key, value) {
+            testing.checklist = testing.checklist || {};
+            testing.checklist[key] = !!value;
+            save();
+        }
+
+        function saveTestingNotes() {
+            const notes = document.getElementById('testNotes');
+            testing.notes = (notes?.value || '').trim();
+            save();
+        }
+
+        function resetTesting() {
+            testing.checklist = { ...testing.checklist };
+            Object.keys(testing.checklist).forEach(k => testing.checklist[k] = false);
+            testing.notes = '';
+            save();
+        }
+
+        function createBugFromTesting() {
+            const title = prompt('Название бага (кратко):', 'Баг: ');
+            if (!title || !title.trim()) return;
+            data.todo.push({
+                id: 'id-' + Date.now(),
+                title: title.trim(),
+                tag: 'bug',
+                desc: (testing?.notes ? `Контекст тестирования:\n${testing.notes}` : ''),
+                pay: 0,
+                due: '',
+                progress: 0
+            });
+            save();
+        }
+
+        function createTestTask() {
+            const title = prompt('Название задачи тестирования:', 'Тестирование: ');
+            if (!title || !title.trim()) return;
+            data.review.push({
+                id: 'id-' + Date.now(),
+                title: title.trim(),
+                tag: 'other',
+                desc: 'Провести тестирование. Используйте чек-лист в дашборде.\n' + (testing?.notes ? `\nЗаметки:\n${testing.notes}` : ''),
+                pay: 0,
+                due: '',
+                progress: 0
+            });
+            save();
+        }
+
+        function prepCanvas(canvas) {
+            if (!canvas) return null;
+            const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+            const rect = canvas.getBoundingClientRect();
+            const w = Math.max(1, Math.floor(rect.width));
+            const h = Math.max(1, Math.floor(rect.height));
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            return { ctx, w, h };
+        }
+
+        function clear(ctx, w, h) {
+            ctx.clearRect(0, 0, w, h);
+        }
+
+        function drawBarChart(canvas, labels, values, color) {
+            const p = prepCanvas(canvas);
+            if (!p) return;
+            const { ctx, w, h } = p;
+            clear(ctx, w, h);
+            const maxV = Math.max(1, ...values);
+            const padX = 6;
+            const padY = 10;
+            const barH = 10;
+            const gap = 8;
+            const left = 64;
+            ctx.font = '12px Inter, sans-serif';
+            ctx.textBaseline = 'middle';
+            for (let i = 0; i < labels.length; i++) {
+                const y = padY + i * (barH + gap);
+                if (y + barH > h - 4) break;
+                const v = values[i] || 0;
+                const bw = Math.round((w - left - padX) * (v / maxV));
+                ctx.fillStyle = 'rgba(255,255,255,0.12)';
+                ctx.fillRect(left, y, w - left - padX, barH);
+                ctx.fillStyle = color;
+                ctx.fillRect(left, y, bw, barH);
+                ctx.fillStyle = 'rgba(241,245,249,0.85)';
+                ctx.fillText(labels[i], padX, y + barH / 2);
+                ctx.fillStyle = 'rgba(241,245,249,0.8)';
+                ctx.fillText(String(v), w - padX - 16, y + barH / 2);
+            }
+        }
+
+        function drawLineChart(canvas, labels, values, color) {
+            const p = prepCanvas(canvas);
+            if (!p) return;
+            const { ctx, w, h } = p;
+            clear(ctx, w, h);
+            const maxV = Math.max(1, ...values);
+            const pad = 10;
+            const plotW = w - pad * 2;
+            const plotH = h - pad * 2;
+            const step = plotW / Math.max(1, values.length - 1);
+
+            // grid
+            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 3; i++) {
+                const y = pad + (plotH * i) / 3;
+                ctx.beginPath();
+                ctx.moveTo(pad, y);
+                ctx.lineTo(w - pad, y);
+                ctx.stroke();
+            }
+
+            // line
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            values.forEach((v, i) => {
+                const x = pad + i * step;
+                const y = pad + plotH - (plotH * (v / maxV));
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // points
+            ctx.fillStyle = color;
+            values.forEach((v, i) => {
+                const x = pad + i * step;
+                const y = pad + plotH - (plotH * (v / maxV));
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // x labels (0,7,14)
+            ctx.fillStyle = 'rgba(148,163,184,0.9)';
+            ctx.font = '11px Inter, sans-serif';
+            ctx.textBaseline = 'top';
+            const idxs = [0, 6, 13].filter(i => i < labels.length);
+            idxs.forEach(i => {
+                const x = pad + i * step;
+                ctx.fillText(labels[i] + 'д', Math.min(w - pad - 20, Math.max(pad, x - 6)), h - pad + 2);
+            });
+        }
+
+        function drawProgressPay(canvas, { donePct, avgProgress, plannedPay, donePay }) {
+            const p = prepCanvas(canvas);
+            if (!p) return;
+            const { ctx, w, h } = p;
+            clear(ctx, w, h);
+
+            // two mini-gauges: done% and avgProgress%
+            const centerY = Math.round(h / 2);
+            const r = Math.min(36, Math.floor(h / 2) - 6);
+            const c1x = 54;
+            const c2x = 132;
+
+            function donut(cx, cy, pct, col, label) {
+                const start = -Math.PI / 2;
+                const end = start + (Math.PI * 2 * (pct / 100));
+                ctx.lineWidth = 8;
+                ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.strokeStyle = col;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, start, end);
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(241,245,249,0.9)';
+                ctx.font = '12px JetBrains Mono, monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(String(pct) + '%', cx, cy);
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillStyle = 'rgba(148,163,184,0.9)';
+                ctx.fillText(label, cx, cy + r + 12);
+                ctx.textAlign = 'left';
+            }
+
+            donut(c1x, centerY - 4, donePct, '#34d399', 'Готово');
+            donut(c2x, centerY - 4, avgProgress, '#38bdf8', 'Прогресс');
+
+            // payment bar (done vs planned)
+            const left = 200;
+            const rightPad = 10;
+            const barW = Math.max(1, w - left - rightPad);
+            const barH = 12;
+            const y = centerY - barH / 2;
+            const planned = Math.max(1, plannedPay);
+            const doneW = Math.round(barW * (donePay / planned));
+            ctx.fillStyle = 'rgba(255,255,255,0.10)';
+            ctx.fillRect(left, y, barW, barH);
+            ctx.fillStyle = '#34d399';
+            ctx.fillRect(left, y, doneW, barH);
+            ctx.fillStyle = 'rgba(148,163,184,0.9)';
+            ctx.font = '11px Inter, sans-serif';
+            ctx.fillText('Оплата', left, y - 14);
+            ctx.fillStyle = 'rgba(241,245,249,0.85)';
+            ctx.font = '11px JetBrains Mono, monospace';
+            ctx.fillText(`${Math.round((donePay / planned) * 100)}%`, left + barW + 6, y + 2);
+        }
+
+        // redraw on resize
+        window.addEventListener('resize', () => {
+            // avoid heavy redraw loops on resize
+            if (window.__dashTimer) clearTimeout(window.__dashTimer);
+            window.__dashTimer = setTimeout(renderDashboard, 120);
+        });
+
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        load();
+    </script>
+</body>
+</html>
