@@ -18,6 +18,11 @@
     <!-- Devicon - Technology Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css">
     
+    <!-- RPG View Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
     <!-- Structured Data for ATS and Search Engines -->
     <script type="application/ld+json">
     {
@@ -223,7 +228,7 @@
             backdrop-filter: blur(10px);
             padding: 15px 0;
             position: sticky;
-            top: 0;
+            top: 58px;
             z-index: 100;
             border-bottom: 1px solid var(--border-color);
         }
@@ -1136,10 +1141,538 @@
                 page-break-inside: avoid;
             }
         }
+
+        /* ========== VIEW TOGGLE ========== */
+        #view-toggle {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0;
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-bottom: 2px solid #00ff41;
+            box-shadow: 0 2px 20px rgba(0, 255, 65, 0.15);
+        }
+        #view-toggle .toggle-btn {
+            padding: 10px 32px;
+            font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border: 2px solid #00ff41;
+            background: transparent;
+            color: #00ff41;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        #view-toggle .toggle-btn:first-child {
+            border-radius: 6px 0 0 6px;
+            border-right: 1px solid #00ff41;
+        }
+        #view-toggle .toggle-btn:last-child {
+            border-radius: 0 6px 6px 0;
+            border-left: 1px solid #00ff41;
+        }
+        #view-toggle .toggle-btn.active {
+            background: #00ff41;
+            color: #0a0a0f;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
+        }
+        #view-toggle .toggle-btn:hover:not(.active) {
+            background: rgba(0, 255, 65, 0.1);
+        }
+        body.has-toggle {
+            padding-top: 58px;
+        }
+
+        /* ========== RPG VIEW (Character Sheet) ========== */
+        #rpg-view {
+            min-height: 100vh;
+            background: #0a0a0f;
+            color: #00ff41;
+            font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+            overflow-x: hidden;
+        }
+        .rpg-scanline {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 9998;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 65, 0.015) 2px,
+                rgba(0, 255, 65, 0.015) 4px
+            );
+        }
+        .rpg-header {
+            text-align: center;
+            padding: 30px 20px 15px;
+            border-bottom: 2px solid #00ff41;
+            position: relative;
+        }
+        .rpg-header::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ff41, transparent);
+        }
+        .rpg-name {
+            font-size: clamp(1.8rem, 4vw, 3rem);
+            font-weight: 700;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            color: #00ff41;
+            text-shadow: 0 0 20px rgba(0, 255, 65, 0.5), 0 0 40px rgba(0, 255, 65, 0.2);
+            margin-bottom: 8px;
+        }
+        .rpg-role {
+            font-size: 0.9rem;
+            color: #f5a623;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        .rpg-status {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: #aaa;
+            letter-spacing: 2px;
+        }
+        .rpg-status .status-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            background: #00ff41;
+            border-radius: 50%;
+            margin-left: 6px;
+            animation: rpg-blink 1.5s infinite;
+            box-shadow: 0 0 6px #00ff41;
+        }
+        @keyframes rpg-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .rpg-contacts {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 12px;
+        }
+        .rpg-contacts a {
+            color: #00ff41;
+            text-decoration: none;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            padding: 4px 12px;
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 3px;
+            transition: all 0.3s;
+        }
+        .rpg-contacts a:hover {
+            background: rgba(0, 255, 65, 0.15);
+            border-color: #00ff41;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        /* Main Layout */
+        .rpg-main {
+            display: grid;
+            grid-template-columns: 240px 1fr 280px;
+            gap: 0;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: calc(100vh - 300px);
+        }
+        .rpg-panel {
+            border: 1px solid rgba(0, 255, 65, 0.2);
+            padding: 20px;
+        }
+
+        /* Left Panel */
+        .rpg-left {
+            border-right: 2px solid rgba(0, 255, 65, 0.3);
+        }
+        .rpg-photo-frame {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 20px;
+            border: 3px solid #00ff41;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.2), inset 0 0 20px rgba(0, 255, 65, 0.1);
+        }
+        .rpg-photo-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: sepia(0.3) saturate(0.8) brightness(0.9);
+            transition: filter 0.5s;
+        }
+        .rpg-photo-frame:hover img {
+            filter: sepia(0) saturate(1) brightness(1);
+        }
+        .rpg-info-block {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px dashed rgba(0, 255, 65, 0.2);
+        }
+        .rpg-info-block .label {
+            font-size: 0.65rem;
+            color: #888;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .rpg-info-block .value {
+            font-size: 0.85rem;
+            color: #00ff41;
+            font-weight: 700;
+        }
+        .rpg-exp-bar {
+            margin-top: 6px;
+            height: 6px;
+            background: #1a1a2e;
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .rpg-exp-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff41, #4af626);
+            box-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+            transition: width 1s ease;
+        }
+
+        /* Middle Panel - SPECIAL Attributes */
+        .rpg-middle {
+            padding: 20px 30px;
+        }
+        .rpg-section-title {
+            font-size: 0.75rem;
+            letter-spacing: 3px;
+            color: #f5a623;
+            text-transform: uppercase;
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(245, 166, 35, 0.3);
+        }
+        .special-table {
+            width: 100%;
+        }
+        .special-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.08);
+            gap: 12px;
+        }
+        .special-letter {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #f5a623;
+            width: 40px;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(245, 166, 35, 0.5);
+        }
+        .special-info {
+            flex: 1;
+        }
+        .special-name {
+            font-size: 0.8rem;
+            color: #00ff41;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .special-desc {
+            font-size: 0.65rem;
+            color: #666;
+            margin-top: 2px;
+        }
+        .special-value {
+            display: flex;
+            gap: 3px;
+            align-items: center;
+        }
+        .special-pip {
+            width: 18px;
+            height: 18px;
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 2px;
+            background: #0d0d15;
+            transition: all 0.3s;
+        }
+        .special-pip.filled {
+            background: #00ff41;
+            box-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
+            border-color: #00ff41;
+        }
+        .special-num {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #00ff41;
+            width: 30px;
+            text-align: right;
+        }
+
+        /* Right Panel - Skills */
+        .rpg-right {
+            border-left: 2px solid rgba(0, 255, 65, 0.3);
+        }
+        .rpg-skill-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px dotted rgba(0, 255, 65, 0.1);
+        }
+        .rpg-skill-name {
+            font-size: 0.72rem;
+            color: #ccc;
+            letter-spacing: 0.5px;
+        }
+        .rpg-skill-bar-wrap {
+            width: 90px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .rpg-skill-bar {
+            flex: 1;
+            height: 4px;
+            background: #1a1a2e;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .rpg-skill-bar .fill {
+            height: 100%;
+            width: 0;
+            background: #00ff41;
+            transition: width 1.5s ease;
+        }
+        .rpg-skill-val {
+            font-size: 0.7rem;
+            color: #00ff41;
+            font-weight: 700;
+            min-width: 22px;
+            text-align: right;
+        }
+
+        /* Bottom Tabs */
+        .rpg-bottom {
+            max-width: 1400px;
+            margin: 0 auto;
+            border-top: 2px solid #00ff41;
+        }
+        .rpg-tabs-nav {
+            display: flex;
+            background: #0d0d15;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+            overflow-x: auto;
+        }
+        .rpg-tab-btn {
+            padding: 12px 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #666;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .rpg-tab-btn:hover {
+            color: #00ff41;
+            background: rgba(0, 255, 65, 0.05);
+        }
+        .rpg-tab-btn.active {
+            color: #f5a623;
+            border-bottom-color: #f5a623;
+        }
+        .rpg-tab-content {
+            display: none;
+            padding: 25px 30px;
+            max-height: 50vh;
+            overflow-y: auto;
+            color: #ccc;
+            font-size: 0.8rem;
+            line-height: 1.7;
+        }
+        .rpg-tab-content.active {
+            display: block;
+        }
+        .rpg-tab-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        .rpg-tab-content::-webkit-scrollbar-track {
+            background: #0a0a0f;
+        }
+        .rpg-tab-content::-webkit-scrollbar-thumb {
+            background: #00ff41;
+            border-radius: 3px;
+        }
+        .rpg-tab-content h3 {
+            color: #f5a623;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin: 20px 0 10px;
+        }
+        .rpg-tab-content h3:first-child {
+            margin-top: 0;
+        }
+        .rpg-tab-content p {
+            margin-bottom: 8px;
+        }
+        .rpg-tab-content strong {
+            color: #00ff41;
+        }
+        .rpg-tab-content a {
+            color: #00ff41;
+            text-decoration: underline;
+            text-decoration-color: rgba(0, 255, 65, 0.3);
+        }
+        .rpg-tab-content a:hover {
+            text-decoration-color: #00ff41;
+        }
+
+        /* RPG Project Items */
+        .rpg-project {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.08);
+        }
+        .rpg-project-name {
+            color: #00ff41;
+            font-weight: 700;
+            font-size: 0.82rem;
+        }
+        .rpg-project-desc {
+            color: #888;
+            font-size: 0.72rem;
+            margin-top: 3px;
+        }
+        .rpg-project a {
+            font-size: 0.68rem;
+            color: #f5a623;
+        }
+
+        /* RPG Experience Items */
+        .rpg-exp-item {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.08);
+        }
+        .rpg-exp-title {
+            color: #00ff41;
+            font-weight: 700;
+            font-size: 0.82rem;
+        }
+        .rpg-exp-meta {
+            color: #f5a623;
+            font-size: 0.7rem;
+            margin: 4px 0;
+        }
+        .rpg-exp-desc {
+            color: #999;
+            font-size: 0.72rem;
+        }
+
+        /* RPG Cert/Perk Items */
+        .rpg-perk {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            margin: 4px;
+            border: 1px solid rgba(0, 255, 65, 0.2);
+            border-radius: 3px;
+            font-size: 0.7rem;
+            color: #ccc;
+            transition: all 0.3s;
+        }
+        .rpg-perk:hover {
+            border-color: #00ff41;
+            background: rgba(0, 255, 65, 0.05);
+        }
+        .rpg-perk .perk-icon {
+            font-size: 1rem;
+        }
+
+        /* RPG Footer */
+        .rpg-footer {
+            text-align: center;
+            padding: 20px;
+            border-top: 1px solid rgba(0, 255, 65, 0.15);
+            color: #444;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+        }
+
+        /* RPG Responsive */
+        @media (max-width: 1024px) {
+            .rpg-main {
+                grid-template-columns: 200px 1fr;
+            }
+            .rpg-right {
+                grid-column: 1 / -1;
+                border-left: none;
+                border-top: 2px solid rgba(0, 255, 65, 0.3);
+            }
+        }
+        @media (max-width: 768px) {
+            .rpg-main {
+                grid-template-columns: 1fr;
+            }
+            .rpg-left {
+                border-right: none;
+                border-bottom: 2px solid rgba(0, 255, 65, 0.3);
+                display: flex;
+                flex-wrap: wrap;
+                gap: 15px;
+                justify-content: center;
+            }
+            .rpg-photo-frame {
+                width: 120px;
+                height: 120px;
+            }
+            .rpg-middle {
+                border-bottom: 2px solid rgba(0, 255, 65, 0.3);
+            }
+            .rpg-tab-btn {
+                padding: 10px 12px;
+                font-size: 0.6rem;
+            }
+            #view-toggle .toggle-btn {
+                padding: 8px 16px;
+                font-size: 0.75rem;
+            }
+        }
     </style>
 </head>
-<body>
+<body class="has-toggle">
+    <!-- ===== VIEW TOGGLE ===== -->
+    <div id="view-toggle">
+        <button class="toggle-btn active" data-view="classic" onclick="switchView('classic')">КЛАССИКА</button>
+        <button class="toggle-btn" data-view="rpg" onclick="switchView('rpg')">CHARACTER SHEET</button>
+    </div>
+
     <canvas id="particles-bg"></canvas>
+
+    <!-- ===== CLASSIC VIEW ===== -->
+    <div id="classic-view">
     <nav>
         <div class="container">
             <a href="#" class="nav-logo" aria-label="На главную">
@@ -2614,6 +3147,326 @@
             <p style="margin-top: 10px; opacity: 0.8;">Fullstack Python Developer</p>
         </div>
     </footer>
+    </div><!-- /classic-view -->
+
+    <!-- ===== RPG VIEW (Character Sheet) ===== -->
+    <div id="rpg-view" style="display:none">
+        <div class="rpg-scanline"></div>
+
+        <!-- RPG Header -->
+        <div class="rpg-header">
+            <div class="rpg-name">АЛЕКСЕЙ ТЕМНИКОВ</div>
+            <div class="rpg-role">ROLE: FULLSTACK PYTHON DEVELOPER</div>
+            <div class="rpg-status">STATUS: AVAILABLE FOR MISSIONS <span class="status-dot"></span></div>
+            <div class="rpg-contacts">
+                <a href="https://github.com/pyLexxDramma" target="_blank">GITHUB</a>
+                <a href="https://t.me/LexxDramma" target="_blank">TELEGRAM</a>
+                <a href="mailto:lexxdramma@vk.com">EMAIL</a>
+            </div>
+        </div>
+
+        <!-- RPG Main: Left + Middle + Right -->
+        <div class="rpg-main">
+            <!-- LEFT PANEL -->
+            <div class="rpg-panel rpg-left">
+                <div class="rpg-photo-frame">
+                    <img src="images/profile-photo.jpg" alt="Lexx Dramma">
+                </div>
+                <div class="rpg-info-block">
+                    <div class="label">ВОЗРАСТ / ПОЛ</div>
+                    <div class="value">AGE: -- &nbsp; SEX: MALE</div>
+                </div>
+                <div class="rpg-info-block">
+                    <div class="label">IT EXPERIENCE</div>
+                    <div class="value">DEV: 3+ YEARS</div>
+                    <div class="rpg-exp-bar"><div class="fill" style="width:60%"></div></div>
+                </div>
+                <div class="rpg-info-block">
+                    <div class="label">ТЕКУЩИЙ УРОВЕНЬ</div>
+                    <div class="value">LVL 42 — FULLSTACK</div>
+                    <div class="rpg-exp-bar"><div class="fill" style="width:42%"></div></div>
+                </div>
+                <div class="rpg-info-block">
+                    <div class="label">КЛАСС</div>
+                    <div class="value">AI-NATIVE DEVELOPER</div>
+                </div>
+                <div class="rpg-info-block">
+                    <div class="label">ПОДКЛАСС</div>
+                    <div class="value">SOLO PLAYER</div>
+                </div>
+                <div class="rpg-info-block">
+                    <div class="label">ГИЛЬДИЯ</div>
+                    <div class="value">POINTPULSE</div>
+                </div>
+            </div>
+
+            <!-- MIDDLE PANEL - S.P.E.C.I.A.L. -->
+            <div class="rpg-panel rpg-middle">
+                <div class="rpg-section-title">S.P.E.C.I.A.L.</div>
+                <div class="special-table" id="rpg-special">
+                    <div class="special-row">
+                        <div class="special-letter">S</div>
+                        <div class="special-info">
+                            <div class="special-name">STRENGTH — Backend</div>
+                            <div class="special-desc">Python, Django, FastAPI, Flask, REST API</div>
+                        </div>
+                        <div class="special-value" data-val="9"></div>
+                        <div class="special-num">9</div>
+                    </div>
+                    <div class="special-row">
+                        <div class="special-letter">P</div>
+                        <div class="special-info">
+                            <div class="special-name">PERCEPTION — Frontend</div>
+                            <div class="special-desc">React, Vue, TypeScript, HTML/CSS</div>
+                        </div>
+                        <div class="special-value" data-val="7"></div>
+                        <div class="special-num">7</div>
+                    </div>
+                    <div class="special-row">
+                        <div class="special-letter">E</div>
+                        <div class="special-info">
+                            <div class="special-name">ENDURANCE — DevOps</div>
+                            <div class="special-desc">Docker, CI/CD, Linux, Cloud</div>
+                        </div>
+                        <div class="special-value" data-val="6"></div>
+                        <div class="special-num">6</div>
+                    </div>
+                    <div class="special-row">
+                        <div class="special-letter">C</div>
+                        <div class="special-info">
+                            <div class="special-name">CHARISMA — Коммуникация</div>
+                            <div class="special-desc">Teamwork, Code Review, Документация</div>
+                        </div>
+                        <div class="special-value" data-val="7"></div>
+                        <div class="special-num">7</div>
+                    </div>
+                    <div class="special-row">
+                        <div class="special-letter">I</div>
+                        <div class="special-info">
+                            <div class="special-name">INTELLIGENCE — AI & ML</div>
+                            <div class="special-desc">RAG, LLM, Prompt Eng, Cursor, Claude</div>
+                        </div>
+                        <div class="special-value" data-val="8"></div>
+                        <div class="special-num">8</div>
+                    </div>
+                    <div class="special-row">
+                        <div class="special-letter">A</div>
+                        <div class="special-info">
+                            <div class="special-name">AGILITY — Архитектура</div>
+                            <div class="special-desc">Clean Arch, SOLID, DDD, Микросервисы</div>
+                        </div>
+                        <div class="special-value" data-val="8"></div>
+                        <div class="special-num">8</div>
+                    </div>
+                    <div class="special-row">
+                        <div class="special-letter">L</div>
+                        <div class="special-info">
+                            <div class="special-name">LUCK — Data Engineering</div>
+                            <div class="special-desc">ETL, SQL, Pandas, API, Excel</div>
+                        </div>
+                        <div class="special-value" data-val="7"></div>
+                        <div class="special-num">7</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL - Skills -->
+            <div class="rpg-panel rpg-right">
+                <div class="rpg-section-title">SKILLS</div>
+                <div id="rpg-skills-list">
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">Python</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="95"></div></div><span class="rpg-skill-val">95</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">Django</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="85"></div></div><span class="rpg-skill-val">85</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">FastAPI</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="85"></div></div><span class="rpg-skill-val">85</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">Flask</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="75"></div></div><span class="rpg-skill-val">75</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">REST API</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="90"></div></div><span class="rpg-skill-val">90</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">React.js</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="80"></div></div><span class="rpg-skill-val">80</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">JavaScript</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="82"></div></div><span class="rpg-skill-val">82</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">TypeScript</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="78"></div></div><span class="rpg-skill-val">78</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">PostgreSQL</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="85"></div></div><span class="rpg-skill-val">85</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">Docker</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="75"></div></div><span class="rpg-skill-val">75</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">Git/GitHub</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="90"></div></div><span class="rpg-skill-val">90</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">AI/LLM</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="80"></div></div><span class="rpg-skill-val">80</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">RAG</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="78"></div></div><span class="rpg-skill-val">78</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">Vue.js</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="65"></div></div><span class="rpg-skill-val">65</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">HTML/CSS</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="88"></div></div><span class="rpg-skill-val">88</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">MongoDB</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="60"></div></div><span class="rpg-skill-val">60</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">Redis</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="65"></div></div><span class="rpg-skill-val">65</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">Selenium</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="80"></div></div><span class="rpg-skill-val">80</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">Pandas</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="72"></div></div><span class="rpg-skill-val">72</span></div></div>
+                    <div class="rpg-skill-row"><span class="rpg-skill-name">Celery</span><div class="rpg-skill-bar-wrap"><div class="rpg-skill-bar"><div class="fill" data-w="70"></div></div><span class="rpg-skill-val">70</span></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RPG Bottom: Tabs -->
+        <div class="rpg-bottom">
+            <nav class="rpg-tabs-nav">
+                <button class="rpg-tab-btn active" data-tab="profile" onclick="rpgTab('profile')">ПРОФИЛЬ</button>
+                <button class="rpg-tab-btn" data-tab="projects" onclick="rpgTab('projects')">ПРОЕКТЫ</button>
+                <button class="rpg-tab-btn" data-tab="jobs" onclick="rpgTab('jobs')">ОПЫТ</button>
+                <button class="rpg-tab-btn" data-tab="perks" onclick="rpgTab('perks')">ПЕРКИ</button>
+                <button class="rpg-tab-btn" data-tab="achievements" onclick="rpgTab('achievements')">ДОСТИЖЕНИЯ</button>
+            </nav>
+
+            <!-- TAB: Profile -->
+            <div class="rpg-tab-content active" id="rpg-tab-profile">
+                <h3>О ПЕРСОНАЖЕ</h3>
+                <p><strong>Fullstack Python Developer</strong> с опытом разработки веб-приложений и backend-систем. Специализируюсь на создании масштабируемых решений с использованием <strong>Python, Django, FastAPI, React, PostgreSQL</strong> и современных DevOps-практик.</p>
+                <h3>AI-NATIVE DEVELOPER</h3>
+                <p>Пишу и поддерживаю код <strong>самостоятельно</strong> (архитектура, реализация, тестирование, деплой), а AI использую как <strong>инженерный ускоритель</strong> — чтобы быстрее делать прототипы, находить узкие места, безопаснее рефакторить. Инструменты: <strong>Cursor (Composer), Lovable, Claude Code</strong>.</p>
+                <h3>SOLO PLAYER</h3>
+                <p>Способен спроектировать и реализовать сложную систему с нуля без помощи других разработчиков — от требований и архитектуры до релиза и поддержки.</p>
+                <h3>FULLSTACK PYTHON+JS</h3>
+                <p>Уверенное владение обоими стеками. Не делю задачи на «моё/не моё» — закрываю весь цикл: backend + frontend + интеграции.</p>
+                <h3>AI/ML PRACTICE</h3>
+                <p>Реальный опыт работы с LLM: <strong>RAG</strong>, prompt engineering, local inference, embeddings. Внедрял решения в проекты и процессы.</p>
+                <h3>DATA ENGINEERING</h3>
+                <p>Умею собирать, чистить и сводить данные из разных источников (<strong>Excel, SQL, API</strong>) в единую структуру для аналитики и автоматизации.</p>
+            </div>
+
+            <!-- TAB: Projects -->
+            <div class="rpg-tab-content" id="rpg-tab-projects">
+                <h3>TOP ПРОЕКТЫ</h3>
+                <div class="rpg-project">
+                    <div class="rpg-project-name">Telegram-бот для аналитики по видео</div>
+                    <div class="rpg-project-desc">LLM (Ollama) → SQL → PostgreSQL. Асинхронный стек: aiogram 3, asyncpg, httpx. Docker Compose.</div>
+                    <a href="https://github.com/pyLexxDramma/video_analytics_bot" target="_blank">GitHub →</a>
+                </div>
+                <div class="rpg-project">
+                    <div class="rpg-project-name">Deribit Client — криптобиржа</div>
+                    <div class="rpg-project-desc">FastAPI, PostgreSQL, Celery, Redis. Clean Architecture. REST API + Docker.</div>
+                    <a href="https://github.com/pyLexxDramma/DERIBIT_CLIENT" target="_blank">GitHub →</a>
+                </div>
+                <div class="rpg-project">
+                    <div class="rpg-project-name">Парсер Yandex.Maps и 2GIS</div>
+                    <div class="rpg-project-desc">Production-ready парсинг отзывов, рейтингов. 200+ городов. CSV, JSON, PDF.</div>
+                    <a href="https://github.com/pyLexxDramma/unified_parser_v2" target="_blank">GitHub →</a>
+                </div>
+                <div class="rpg-project">
+                    <div class="rpg-project-name">Todo App с виртуализацией</div>
+                    <div class="rpg-project-desc">React, TypeScript, TanStack Query, FSD-архитектура, SASS.</div>
+                    <a href="https://github.com/pyLexxDramma/todo-app" target="_blank">GitHub →</a>
+                </div>
+                <div class="rpg-project">
+                    <div class="rpg-project-name">Microservices Communication</div>
+                    <div class="rpg-project-desc">Микросервисная архитектура на Node.js с Docker.</div>
+                    <a href="https://github.com/pyLexxDramma/Microservices_Communication" target="_blank">GitHub →</a>
+                </div>
+                <div class="rpg-project">
+                    <div class="rpg-project-name">Платформа тестирования по русскому языку</div>
+                    <div class="rpg-project-desc">Next.js, TypeScript, A/B тесты, ЮKassa, Битрикс24, GA + Метрика.</div>
+                    <a href="https://github.com/pyLexxDramma/russian-testing-platform" target="_blank">GitHub →</a>
+                </div>
+                <div class="rpg-project">
+                    <div class="rpg-project-name">E-commerce приложение</div>
+                    <div class="rpg-project-desc">Fullstack e-commerce: backend + frontend.</div>
+                    <a href="https://github.com/pyLexxDramma/vne_ecommerce" target="_blank">GitHub →</a>
+                </div>
+                <div class="rpg-project">
+                    <div class="rpg-project-name">Backend автоматизации закупок (диплом)</div>
+                    <div class="rpg-project-desc">Enterprise REST API, RBAC, аутентификация.</div>
+                    <a href="https://github.com/pyLexxDramma/my_ordering_service" target="_blank">GitHub →</a>
+                </div>
+                <p style="margin-top:15px;color:#666;">+ ещё 25 проектов на <a href="https://github.com/pyLexxDramma" target="_blank">GitHub</a></p>
+            </div>
+
+            <!-- TAB: Jobs -->
+            <div class="rpg-tab-content" id="rpg-tab-jobs">
+                <div class="rpg-exp-item">
+                    <div class="rpg-exp-title">PointPulse — Frontend & Backend Developer</div>
+                    <div class="rpg-exp-meta">Январь 2025 — настоящее время | pointpulse.ru</div>
+                    <div class="rpg-exp-desc">Разработка фронтенда и бэкенда платформы: React 19, TypeScript, FastAPI, PostgreSQL, Redis, Docker, FSD-архитектура, MinIO (S3), JWT, OpenTelemetry.</div>
+                </div>
+                <div class="rpg-exp-item">
+                    <div class="rpg-exp-title">Fullstack Python Developer (ИП / фриланс)</div>
+                    <div class="rpg-exp-meta">Июнь 2022 — настоящее время | Удалённо</div>
+                    <div class="rpg-exp-desc">Разработка веб-приложений, REST API, интеграции с внешними сервисами, автоматизация бизнес-процессов. Python (Django, FastAPI, Flask), React, PostgreSQL.</div>
+                </div>
+                <div class="rpg-exp-item">
+                    <div class="rpg-exp-title">Стажировка — Победа Digital Agency</div>
+                    <div class="rpg-exp-meta">14 октября 2025 — 14 декабря 2025 | Fullstack Python Developer</div>
+                    <div class="rpg-exp-desc">Production-ready парсер-система: FastAPI, Selenium, PostgreSQL, Docker. Анализ данных по 200+ городам. Email-уведомления, PDF/CSV/JSON отчёты.</div>
+                </div>
+                <h3 style="margin-top:20px;">РЕКОМЕНДАЦИЯ</h3>
+                <div class="rpg-exp-item" style="border-left: 2px solid #f5a623; padding-left: 15px;">
+                    <div class="rpg-exp-title" style="color:#f5a623;">Победа Digital Agency</div>
+                    <div class="rpg-exp-desc" style="font-style:italic;">"Алексей показал себя как ответственного и увлеченного сотрудника, способного работать со сложными техническими задачами."</div>
+                    <div class="rpg-exp-meta">— Дмитрий Ложкин, Генеральный директор</div>
+                </div>
+            </div>
+
+            <!-- TAB: Perks (Certificates) -->
+            <div class="rpg-tab-content" id="rpg-tab-perks">
+                <h3>ОСНОВНЫЕ</h3>
+                <a class="rpg-perk" href="certificates/MAIN.pdf" target="_blank"><span class="perk-icon">🎓</span> Python-разработчик</a>
+                <a class="rpg-perk" href="certificates/certificate.pdf" target="_blank"><span class="perk-icon">📜</span> Сертификат об обучении</a>
+                <a class="rpg-perk" href="certificates/Основы языка программирования.pdf" target="_blank"><span class="perk-icon">💻</span> Основы языка программирования</a>
+
+                <h3>BACKEND</h3>
+                <a class="rpg-perk" href="certificates/Django.pdf" target="_blank"><span class="perk-icon">🐍</span> Django</a>
+                <a class="rpg-perk" href="certificates/pro_python.pdf" target="_blank"><span class="perk-icon">🐍</span> Pro Python</a>
+                <a class="rpg-perk" href="certificates/ООП и работа с API.pdf" target="_blank"><span class="perk-icon">🔗</span> ООП и API</a>
+                <a class="rpg-perk" href="certificates/Основы Python создаём телеграм.pdf" target="_blank"><span class="perk-icon">🤖</span> Telegram-боты</a>
+
+                <h3>AI</h3>
+                <a class="rpg-perk" href="certificates/AI.pdf" target="_blank"><span class="perk-icon">🤖</span> Искусственный интеллект</a>
+
+                <h3>FRONTEND</h3>
+                <a class="rpg-perk" href="certificates/Frontend-разработка основы HTML,.pdf" target="_blank"><span class="perk-icon">🌐</span> HTML, CSS, JS</a>
+
+                <h3>БАЗЫ ДАННЫХ</h3>
+                <a class="rpg-perk" href="certificates/Base fo PD.pdf" target="_blank"><span class="perk-icon">🗃️</span> БД для Python</a>
+                <a class="rpg-perk" href="certificates/sql.pdf" target="_blank"><span class="perk-icon">📊</span> SQL</a>
+                <a class="rpg-perk" href="certificates/sql..pdf" target="_blank"><span class="perk-icon">📈</span> Продвинутый SQL</a>
+
+                <h3>DEVOPS</h3>
+                <a class="rpg-perk" href="certificates/GIT.pdf" target="_blank"><span class="perk-icon">📂</span> Git</a>
+
+                <h3>ДИЗАЙН</h3>
+                <a class="rpg-perk" href="certificates/UXUI-дизайнер.pdf" target="_blank"><span class="perk-icon">🎨</span> UX/UI</a>
+                <a class="rpg-perk" href="certificates/Основы работы в Figma.pdf" target="_blank"><span class="perk-icon">🖼️</span> Figma</a>
+                <a class="rpg-perk" href="certificates/Photoshop.pdf" target="_blank"><span class="perk-icon">🖌️</span> Photoshop</a>
+                <a class="rpg-perk" href="certificates/AAE.pdf" target="_blank"><span class="perk-icon">🎬</span> After Effects</a>
+                <a class="rpg-perk" href="certificates/Illustrator.pdf" target="_blank"><span class="perk-icon">🧩</span> Illustrator</a>
+
+                <h3>IT-СПЕЦИАЛИЗАЦИИ</h3>
+                <a class="rpg-perk" href="certificates/Сис.аналитик.pdf" target="_blank"><span class="perk-icon">📋</span> Системный аналитик</a>
+                <a class="rpg-perk" href="certificates/Специалист по информационной безопасности.pdf" target="_blank"><span class="perk-icon">🔒</span> Информационная безопасность</a>
+                <a class="rpg-perk" href="certificates/unity.pdf" target="_blank"><span class="perk-icon">🎮</span> Unity</a>
+                <a class="rpg-perk" href="certificates/Основы разработки на Java.pdf" target="_blank"><span class="perk-icon">☕</span> Java</a>
+                <a class="rpg-perk" href="certificates/1С-программист.pdf" target="_blank"><span class="perk-icon">🏢</span> 1С</a>
+            </div>
+
+            <!-- TAB: Achievements -->
+            <div class="rpg-tab-content" id="rpg-tab-achievements">
+                <h3>ОБРАЗОВАТЕЛЬНЫЕ КВЕСТЫ (ЗАВЕРШЕНЫ)</h3>
+                <div class="rpg-project"><div class="rpg-project-name">Тестировщик ПО</div><div class="rpg-project-desc">Полный курс по QA</div></div>
+                <div class="rpg-project"><div class="rpg-project-name">Системный анализ и проектирование</div></div>
+                <div class="rpg-project"><div class="rpg-project-name">Разработка игр на Unity</div></div>
+                <div class="rpg-project"><div class="rpg-project-name">UX/UI дизайн и веб-дизайн</div></div>
+                <div class="rpg-project"><div class="rpg-project-name">Работа с базами данных и SQL</div></div>
+                <div class="rpg-project"><div class="rpg-project-name">Adobe After Effects / Photoshop / Illustrator</div></div>
+                <div class="rpg-project"><div class="rpg-project-name">Frontend: HTML, CSS, JavaScript</div></div>
+                <div class="rpg-project"><div class="rpg-project-name">Разработка на Java</div></div>
+                <div class="rpg-project"><div class="rpg-project-name">Анализ данных: SQL, Python, Power BI, DataLens</div></div>
+                <div class="rpg-project"><div class="rpg-project-name">Английский для IT-специалистов</div></div>
+                <div class="rpg-project"><div class="rpg-project-name">Figma: дизайн интерфейсов</div></div>
+                <div class="rpg-project"><div class="rpg-project-name">Excel: оптимизация работы с данными</div></div>
+                <h3>МАРКЕТИНГ (БОНУС-ПЕРКИ)</h3>
+                <a class="rpg-perk" href="certificates/SEO.pdf" target="_blank"><span class="perk-icon">🔍</span> SEO</a>
+                <a class="rpg-perk" href="certificates/SMM.pdf" target="_blank"><span class="perk-icon">📱</span> SMM</a>
+                <a class="rpg-perk" href="certificates/маркетинг.pdf" target="_blank"><span class="perk-icon">📈</span> Маркетинг</a>
+                <a class="rpg-perk" href="certificates/Маркетинговая воронка.pdf" target="_blank"><span class="perk-icon">🎯</span> Воронка</a>
+                <a class="rpg-perk" href="certificates/Бренд-менеджер.pdf" target="_blank"><span class="perk-icon">🏷️</span> Бренд-менеджер</a>
+                <a class="rpg-perk" href="certificates/Веб-аналитика.pdf" target="_blank"><span class="perk-icon">📊</span> Веб-аналитика</a>
+            </div>
+        </div>
+
+        <!-- RPG Footer -->
+        <div class="rpg-footer">
+            &copy; 2025 LEXX DRAMMA &bull; FULLSTACK PYTHON DEVELOPER &bull; CHARACTER SHEET v1.0
+        </div>
+    </div><!-- /rpg-view -->
 
     <script>
         // Particles Animation - Full Page
@@ -2880,6 +3733,69 @@
             }
         `;
         document.head.appendChild(style);
+    </script>
+
+    <!-- ===== VIEW TOGGLE + RPG LOGIC ===== -->
+    <script>
+        function switchView(view) {
+            const classic = document.getElementById('classic-view');
+            const rpg = document.getElementById('rpg-view');
+            const canvas = document.getElementById('particles-bg');
+            const btns = document.querySelectorAll('#view-toggle .toggle-btn');
+
+            btns.forEach(b => b.classList.toggle('active', b.dataset.view === view));
+
+            if (view === 'rpg') {
+                classic.style.display = 'none';
+                rpg.style.display = 'block';
+                if (canvas) canvas.style.display = 'none';
+                initRpgAnimations();
+            } else {
+                rpg.style.display = 'none';
+                classic.style.display = 'block';
+                if (canvas) canvas.style.display = '';
+            }
+
+            localStorage.setItem('portfolio-view', view);
+        }
+
+        function rpgTab(tab) {
+            document.querySelectorAll('.rpg-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+            document.querySelectorAll('.rpg-tab-content').forEach(c => c.classList.remove('active'));
+            const el = document.getElementById('rpg-tab-' + tab);
+            if (el) el.classList.add('active');
+        }
+
+        let rpgAnimated = false;
+        function initRpgAnimations() {
+            if (rpgAnimated) return;
+            rpgAnimated = true;
+
+            document.querySelectorAll('.special-value').forEach(el => {
+                const val = parseInt(el.dataset.val) || 0;
+                el.innerHTML = '';
+                for (let i = 1; i <= 10; i++) {
+                    const pip = document.createElement('div');
+                    pip.className = 'special-pip';
+                    if (i <= val) {
+                        setTimeout(() => pip.classList.add('filled'), i * 80);
+                    }
+                    el.appendChild(pip);
+                }
+            });
+
+            document.querySelectorAll('.rpg-skill-bar .fill').forEach(el => {
+                const w = el.dataset.w || '0';
+                setTimeout(() => { el.style.width = w + '%'; }, 300);
+            });
+        }
+
+        (function() {
+            const saved = localStorage.getItem('portfolio-view');
+            if (saved === 'rpg') {
+                switchView('rpg');
+            }
+        })();
     </script>
 </body>
 </html>
